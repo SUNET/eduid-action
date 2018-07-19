@@ -39,7 +39,7 @@ from datetime import datetime
 import urllib3
 from flask import current_app, request, abort
 
-from eduid_webapp.actions.action_abc import ActionPlugin
+from eduid_action.common.action_abc import ActionPlugin
 from eduid_userdb.tou import ToUEvent
 from eduid_userdb.actions.tou import ToUUserDB, ToUUser
 from eduid_am.tasks import update_attributes_keep_result

@@ -41,7 +41,7 @@ from bson import ObjectId
 from copy import deepcopy
 from flask import Response
 from eduid_userdb.tou import ToUEvent
-from eduid_webapp.actions.testing import ActionsTestCase
+from eduid_action.common.testing import ActionsTestCase
 from eduid_action.tou.action import ToUPlugin
 from eduid_action.tou.idp import add_tou_actions
 
