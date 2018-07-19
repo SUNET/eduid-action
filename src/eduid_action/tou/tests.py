@@ -42,8 +42,8 @@ from copy import deepcopy
 from flask import Response
 from eduid_userdb.tou import ToUEvent
 from eduid_action.common.testing import ActionsTestCase
-from eduid_action.tou.action import ToUPlugin
-from eduid_action.tou.idp import add_tou_actions
+from eduid_action.tou.action import Plugin
+from eduid_action.tou.idp import add_actions
 
 
 TOU_ACTION = {
@@ -84,11 +84,12 @@ class ToUActionPluginTests(ActionsTestCase):
 
     def update_actions_config(self, config):
         config['INTERNAL_SIGNUP_URL'] = 'http://example.com/signup'
+        config['ACTION_PLUGINS'].append('tou')
         return config
 
     def _prepare(self, session, **kwargs):
         self.prepare_session(session, plugin_name='tou',
-                plugin_class=ToUPlugin, **kwargs)
+                plugin_class=Plugin, **kwargs)
 
     def tou_accepted(self, version):
         event_id = ObjectId()
@@ -105,7 +106,7 @@ class ToUActionPluginTests(ActionsTestCase):
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
                     mock_idp_app = MockIdPApp(self.app.actions_db, 'test-version')
-                    add_tou_actions(mock_idp_app, self.user, None)
+                    add_actions(mock_idp_app, self.user, None)
                     self.authenticate(client, sess)
                     response = client.get('/get-actions')
                     self.assertEqual(response.status_code, 200)
@@ -120,7 +121,7 @@ class ToUActionPluginTests(ActionsTestCase):
                 with self.app.test_request_context():
                     mock_idp_app = MockIdPApp(self.app.actions_db, 'test-version')
                     self.tou_accepted('test-version')
-                    add_tou_actions(mock_idp_app, self.user, None)
+                    add_actions(mock_idp_app, self.user, None)
                     self.authenticate(client, sess)
                     response = client.get('/get-actions')
                     self.assertEqual(response.status_code, 200)
@@ -139,7 +140,7 @@ class ToUActionPluginTests(ActionsTestCase):
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
                     mock_idp_app = MockIdPApp(self.app.actions_db, 'test-version')
-                    add_tou_actions(mock_idp_app, self.user, None)
+                    add_actions(mock_idp_app, self.user, None)
                     self.authenticate(client, sess)
                     response = client.get('/get-actions')
                     self.assertEqual(response.status_code, 200)
@@ -155,7 +156,7 @@ class ToUActionPluginTests(ActionsTestCase):
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
                     mock_idp_app = MockIdPApp(self.app.actions_db, 'test-version')
-                    add_tou_actions(mock_idp_app, self.user, None)
+                    add_actions(mock_idp_app, self.user, None)
                     self.authenticate(client, sess)
                     response = client.get('/get-actions')
                     self.assertEqual(response.status_code, 200)
@@ -171,7 +172,7 @@ class ToUActionPluginTests(ActionsTestCase):
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
                     mock_idp_app = MockIdPApp(self.app.actions_db, 'test-version')
-                    add_tou_actions(mock_idp_app, self.user, None)
+                    add_actions(mock_idp_app, self.user, None)
                     self.authenticate(client, sess)
                     response = client.get('/get-actions')
                     self.assertEqual(response.status_code, 200)

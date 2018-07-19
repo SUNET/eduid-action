@@ -96,6 +96,7 @@ TEST_CONFIG = {
     'PRESERVE_CONTEXT_ON_EXCEPTION': False,
     'BUNDLES_URL': 'http://example.com/bundles/',
     'DEBUG': True,
+    'ACTION_PLUGINS': []
 }
 
 
