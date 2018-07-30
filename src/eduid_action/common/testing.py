@@ -37,12 +37,30 @@ from copy import deepcopy
 from contextlib import contextmanager
 from bson import ObjectId
 from datetime import datetime
+from mock import MagicMock
 
 from eduid_userdb.userdb import User
 from eduid_userdb.testing import MOCKED_USER_STANDARD
 from eduid_common.api.testing import EduidAPITestCase
 from eduid_webapp.actions.app import actions_init_app
 from eduid_action.common.action_abc import ActionPlugin
+
+
+class MockIdPApp:
+
+    class Config:
+        def __init__(self, **kwargs):
+            for key, val in kwargs.items():
+                setattr(self, key, val)
+
+    class Logger:
+        debug = MagicMock()
+        warning = MagicMock()
+
+    def __init__(self, actions_db, **kwargs):
+        self.config = self.Config(**kwargs)
+        self.logger = self.Logger()
+        self.actions_db = actions_db
 
 
 class TestingActionPlugin(ActionPlugin):
@@ -186,3 +204,7 @@ class ActionsTestCase(EduidAPITestCase):
                                                            timestamp)
         response = client.get(url)
         return response
+
+    def prepare(self, session, plugin_class, plugin_name, **kwargs):
+        self.prepare_session(session, plugin_name=plugin_name,
+                plugin_class=plugin_class, **kwargs)

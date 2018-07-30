@@ -45,32 +45,17 @@ from eduid_userdb.actions.tou import ToUUserDB, ToUUser
 from eduid_am.tasks import update_attributes_keep_result
 
 
-PACKAGE_NAME = 'eduid_action.tou'
-
 http = urllib3.PoolManager()
 
 
 class Plugin(ActionPlugin):
 
+    PACKAGE_NAME = 'eduid_action.tou'
     steps = 1
 
     @classmethod
     def includeme(self, app):
         app.tou_db = ToUUserDB(app.config.get('MONGO_URI'))
-
-    def get_number_of_steps(self):
-        return self.steps
-
-    def get_url_for_bundle(self, action):
-        base = current_app.config.get('BUNDLES_URL')
-        bundle_name = '{}.js'
-        if current_app.config.get('DEBUG'):
-            bundle_name = '{}-bundle.dev.js'
-        url = '{}{}'.format(
-                base,
-                bundle_name.format(PACKAGE_NAME)
-                )
-        return url
 
     def get_config_for_bundle(self, action):
         url = current_app.config.get('INTERNAL_SIGNUP_URL')
