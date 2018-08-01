@@ -128,8 +128,8 @@ class ActionPlugin:
         '''
         The number of steps that the user has to take
         in order to complete this action.
-        In other words, the number of html forms
-        that will be sequentially sent to the user.
+        In other words, the number of requests the client will
+        make to complete the action.
 
         :returns: the number of steps
         :rtype: int

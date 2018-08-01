@@ -41,6 +41,7 @@ from eduid_userdb.testing import MOCKED_USER_STANDARD
 from eduid_action.common.testing import MockIdPApp
 from eduid_action.common.testing import ActionsTestCase
 from eduid_action.mfa.action import Plugin
+from eduid_action.mfa.idp import add_mfa_actions
 
 __author__ = 'ft'
 
@@ -48,9 +49,14 @@ MFA_ACTION = {
         '_id': ObjectId('234567890123456789012301'),
         'user_oid': MOCKED_USER_STANDARD['_id'],
         'action': 'mfa',
+        'session': 'mock-session',
         'preference': 1,
         'params': {}
         }
+
+class MockTicket:
+    def __init__(self, key):
+        self.key = key
 
 
 class MFAActionPluginTests(ActionsTestCase):
@@ -71,6 +77,34 @@ class MFAActionPluginTests(ActionsTestCase):
         config['MFA_TESTING'] = True
         config['ACTION_PLUGINS'].append('mfa')
         return config
+
+    def test_get_mfa_action(self):
+        with self.session_cookie(self.browser) as client:
+            with client.session_transaction() as sess:
+                with self.app.test_request_context():
+                    mock_idp_app = MockIdPApp(self.app.actions_db)
+                    add_mfa_actions(mock_idp_app, self.user,
+                            MockTicket('mock-session'))
+                    self.authenticate(client, sess, idp_session='mock-session')
+                    response = client.get('/get-actions')
+                    self.assertEqual(response.status_code, 200)
+                    data = json.loads(response.data)
+                    self.assertEquals(data['action'], True)
+                    self.assertEquals(data['url'], 
+                            'http://example.com/bundles/eduid_action.mfa-bundle.dev.js')
+
+    def test_get_mfa_action_wrong_session(self):
+        with self.session_cookie(self.browser) as client:
+            with client.session_transaction() as sess:
+                with self.app.test_request_context():
+                    mock_idp_app = MockIdPApp(self.app.actions_db)
+                    add_mfa_actions(mock_idp_app, self.user,
+                            MockTicket('mock-session'))
+                    self.authenticate(client, sess, idp_session='wrong-session')
+                    response = client.get('/get-actions')
+                    self.assertEqual(response.status_code, 200)
+                    data = json.loads(response.data)
+                    self.assertEquals(data['action'], False)
 
     def test_action_success(self):
         with self.session_cookie(self.browser) as client:
