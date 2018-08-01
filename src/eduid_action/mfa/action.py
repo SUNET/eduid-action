@@ -30,7 +30,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 import json
-from flask import current_app, request
+from flask import current_app, request, session
 
 from eduid_action.common.action_abc import ActionPlugin
 from eduid_userdb.credentials import U2F
@@ -49,8 +49,8 @@ class Plugin(ActionPlugin):
     @classmethod
     def includeme(cls, app):
 
-        for item in ('u2f_app_id',
-                     'u2f_valid_facets'):
+        for item in ('U2F_APP_ID',
+                     'U2F_VALID_FACETS'):
             if app.config.get(item) is None:
                 app.logger.error('The "{}" configuration option is required'.format(item))
 
@@ -61,7 +61,7 @@ class Plugin(ActionPlugin):
         user = current_app.central_userdb.get_user_by_id(userid, raise_on_missing=False)
         current_app.logger.debug('Loaded User {} from db'.format(user))
         if not user:
-            raise self.ActionError('User not found')
+            raise self.ActionError('mfa.user-not-found')
 
         u2f_tokens = []
         for this in user.credentials.filter(U2F).to_list():
@@ -74,7 +74,7 @@ class Plugin(ActionPlugin):
 
         current_app.logger.debug('U2F tokens for user {}: {}'.format(user, u2f_tokens))
 
-        challenge = begin_authentication(current_app.config['u2f_app_id'], u2f_tokens)
+        challenge = begin_authentication(current_app.config['U2F_APP_ID'], u2f_tokens)
 
         # Save the challenge to be used when validating the signature in perform_action() below
         session[self.PACKAGE_NAME + '.u2f.challenge'] = challenge.json
@@ -105,7 +105,7 @@ class Plugin(ActionPlugin):
         current_app.logger.debug("Challenge: {!r}".format(challenge))
 
         device, counter, touch = complete_authentication(challenge,
-                token_response, current_app.config['u2f_valid_facets'])
+                token_response, current_app.config['U2F_VALID_FACETS'])
         current_app.logger.debug('U2F authentication data: {}'.format({
             'keyHandle': device['keyHandle'],
             'touch': touch,
@@ -120,11 +120,12 @@ class Plugin(ActionPlugin):
             if this.keyhandle == device['keyHandle']:
                 current_app.logger.info('User {} logged in using U2F token {} (touch: {}, counter {})'.format(
                     user, this, touch, counter))
-                current_app.actions_db.remove_action_by_id(action.action_id)
-                return {'success': True,
-                       'touch': touch,
-                       'counter': counter,
-                       'key_handle': this.keyhandle,
-                       }
+                action.result = {'success': True,
+                                 'touch': touch,
+                                 'counter': counter,
+                                 'key_handle': this.keyhandle,
+                                 }
+                current_app.actions_db.update_action(action)
+                return action.result
 
         raise self.ActionError('mfa.unknown-token')
