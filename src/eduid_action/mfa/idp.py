@@ -35,7 +35,7 @@ __author__ = 'ft'
 from eduid_userdb.credentials import U2F
 
 
-def add_mfa_actions(idp_app, user, ticket):
+def add_actions(idp_app, user, ticket):
     """
     Add an action requiring the user to login using one or more additional
     authentication factors.

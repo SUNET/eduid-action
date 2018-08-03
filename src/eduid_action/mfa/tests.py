@@ -42,7 +42,7 @@ from eduid_userdb.testing import MOCKED_USER_STANDARD
 from eduid_action.common.testing import MockIdPApp
 from eduid_action.common.testing import ActionsTestCase
 from eduid_action.mfa.action import Plugin
-from eduid_action.mfa.idp import add_mfa_actions
+from eduid_action.mfa.idp import add_actions
 
 __author__ = 'ft'
 
@@ -88,7 +88,7 @@ class MFAActionPluginTests(ActionsTestCase):
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
                     mock_idp_app = MockIdPApp(self.app.actions_db)
-                    add_mfa_actions(mock_idp_app, self.user,
+                    add_actions(mock_idp_app, self.user,
                             MockTicket('mock-session'))
                     self.authenticate(client, sess, idp_session='mock-session')
                     response = client.get('/get-actions')
@@ -105,7 +105,7 @@ class MFAActionPluginTests(ActionsTestCase):
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
                     mock_idp_app = MockIdPApp(self.app.actions_db)
-                    add_mfa_actions(mock_idp_app, self.user,
+                    add_actions(mock_idp_app, self.user,
                             MockTicket('mock-session'))
                     self.authenticate(client, sess, idp_session='wrong-session')
                     response = client.get('/get-actions')
@@ -120,7 +120,7 @@ class MFAActionPluginTests(ActionsTestCase):
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
                     mock_idp_app = MockIdPApp(None)
-                    add_mfa_actions(mock_idp_app, self.user,
+                    add_actions(mock_idp_app, self.user,
                             MockTicket('mock-session'))
                     self.authenticate(client, sess, idp_session='mock-session')
                     response = client.get('/get-actions')
@@ -139,7 +139,7 @@ class MFAActionPluginTests(ActionsTestCase):
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
                     mock_idp_app = MockIdPApp(self.app.actions_db)
-                    add_mfa_actions(mock_idp_app, self.user,
+                    add_actions(mock_idp_app, self.user,
                             MockTicket('mock-session'))
                     self.authenticate(client, sess, idp_session='mock-session')
                     response = client.get('/get-actions')
@@ -154,7 +154,7 @@ class MFAActionPluginTests(ActionsTestCase):
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
                     mock_idp_app = MockIdPApp(self.app.actions_db)
-                    add_mfa_actions(mock_idp_app, self.user,
+                    add_actions(mock_idp_app, self.user,
                             MockTicket('mock-session'))
                     self.authenticate(client, sess, idp_session='mock-session')
                     response = client.get('/get-actions')
@@ -174,7 +174,7 @@ class MFAActionPluginTests(ActionsTestCase):
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
                     mock_idp_app = MockIdPApp(self.app.actions_db)
-                    add_mfa_actions(mock_idp_app, self.user,
+                    add_actions(mock_idp_app, self.user,
                             MockTicket('mock-session'))
                     self.authenticate(client, sess, idp_session='mock-session')
                     response = client.get('/get-actions')
@@ -254,7 +254,7 @@ class MFAActionPluginTests(ActionsTestCase):
                     self.assertEquals(len(self.app.actions_db.get_actions(self.user.user_id,
                         'mock-session')), 1)
                     mock_idp_app = MockIdPApp(self.app.actions_db)
-                    add_mfa_actions(mock_idp_app, self.user,
+                    add_actions(mock_idp_app, self.user,
                             MockTicket('mock-session'))
                     self.assertEquals(len(self.app.actions_db.get_actions(self.user.user_id,
                         'mock-session')), 0)
