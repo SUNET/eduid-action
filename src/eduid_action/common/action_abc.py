@@ -151,7 +151,7 @@ class ActionPlugin:
         '''
         base = current_app.config.get('BUNDLES_URL')
         bundle_name = '{}.js'
-        if current_app.config.get('DEBUG'):
+        if current_app.config.get('DEVEL_MODE', False):
             bundle_name = '{}-bundle.dev.js'
         url = '{}{}'.format(
                 base,
