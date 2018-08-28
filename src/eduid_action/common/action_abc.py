@@ -31,6 +31,7 @@
 #
 from abc import ABCMeta, abstractmethod
 import gettext
+from flask import current_app
 
 
 class ActionError(Exception):
@@ -123,19 +124,18 @@ class ActionPlugin:
         :type app: flask.App
         '''
 
-    @abstractmethod
     def get_number_of_steps(self):
         '''
         The number of steps that the user has to take
         in order to complete this action.
-        In other words, the number of html forms
-        that will be sequentially sent to the user.
+        In other words, the number of requests the client will
+        make to complete the action.
 
         :returns: the number of steps
         :rtype: int
         '''
+        return self.steps
 
-    @abstractmethod
     def get_url_for_bundle(self, action):
         '''
         Return the url for the bundle that contains the front-end javascript
@@ -149,6 +149,15 @@ class ActionPlugin:
         :type action: dict
         :rtype: unicode
         '''
+        base = current_app.config.get('BUNDLES_URL')
+        bundle_name = '{}.js'
+        if current_app.config.get('DEVEL_MODE', False):
+            bundle_name = '{}-bundle.dev.js'
+        url = '{}{}'.format(
+                base,
+                bundle_name.format(self.PACKAGE_NAME)
+                )
+        return url
 
     @abstractmethod
     def get_config_for_bundle(self, action):

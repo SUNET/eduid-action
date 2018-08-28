@@ -35,12 +35,13 @@ __author__ = 'eperez'
 
 
 import json
-from mock import MagicMock, patch
+from mock import patch
 from datetime import datetime
 from bson import ObjectId
 from copy import deepcopy
 from flask import Response
 from eduid_userdb.tou import ToUEvent
+from eduid_action.common.testing import MockIdPApp
 from eduid_action.common.testing import ActionsTestCase
 from eduid_action.tou.action import Plugin
 from eduid_action.tou.idp import add_actions
@@ -55,21 +56,6 @@ TOU_ACTION = {
             'version': 'test-version'
             }
         }
-
-class MockIdPApp:
-
-    class Config:
-        def __init__(self, version):
-            self.tou_version = version
-
-    class Logger:
-        debug = MagicMock()
-        warning = MagicMock()
-
-    def __init__(self, actions_db, version):
-        self.config = self.Config(version)
-        self.logger = self.Logger()
-        self.actions_db = actions_db
 
 
 class ToUActionPluginTests(ActionsTestCase):
@@ -87,10 +73,6 @@ class ToUActionPluginTests(ActionsTestCase):
         config['ACTION_PLUGINS'].append('tou')
         return config
 
-    def _prepare(self, session, **kwargs):
-        self.prepare_session(session, plugin_name='tou',
-                plugin_class=Plugin, **kwargs)
-
     def tou_accepted(self, version):
         event_id = ObjectId()
         self.user.tou.add(ToUEvent(
@@ -105,7 +87,7 @@ class ToUActionPluginTests(ActionsTestCase):
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
-                    mock_idp_app = MockIdPApp(self.app.actions_db, 'test-version')
+                    mock_idp_app = MockIdPApp(self.app.actions_db, tou_version='test-version')
                     add_actions(mock_idp_app, self.user, None)
                     self.authenticate(client, sess)
                     response = client.get('/get-actions')
@@ -119,7 +101,7 @@ class ToUActionPluginTests(ActionsTestCase):
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
-                    mock_idp_app = MockIdPApp(self.app.actions_db, 'test-version')
+                    mock_idp_app = MockIdPApp(self.app.actions_db, tou_version='test-version')
                     self.tou_accepted('test-version')
                     add_actions(mock_idp_app, self.user, None)
                     self.authenticate(client, sess)
@@ -139,7 +121,7 @@ class ToUActionPluginTests(ActionsTestCase):
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
-                    mock_idp_app = MockIdPApp(self.app.actions_db, 'test-version')
+                    mock_idp_app = MockIdPApp(self.app.actions_db, tou_version='test-version')
                     add_actions(mock_idp_app, self.user, None)
                     self.authenticate(client, sess)
                     response = client.get('/get-actions')
@@ -155,7 +137,7 @@ class ToUActionPluginTests(ActionsTestCase):
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
-                    mock_idp_app = MockIdPApp(self.app.actions_db, 'test-version')
+                    mock_idp_app = MockIdPApp(self.app.actions_db, tou_version='test-version')
                     add_actions(mock_idp_app, self.user, None)
                     self.authenticate(client, sess)
                     response = client.get('/get-actions')
@@ -171,7 +153,7 @@ class ToUActionPluginTests(ActionsTestCase):
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
-                    mock_idp_app = MockIdPApp(self.app.actions_db, 'test-version')
+                    mock_idp_app = MockIdPApp(self.app.actions_db, tou_version='test-version')
                     add_actions(mock_idp_app, self.user, None)
                     self.authenticate(client, sess)
                     response = client.get('/get-actions')
@@ -188,7 +170,7 @@ class ToUActionPluginTests(ActionsTestCase):
         mock_update.return_value = RTask()
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
-                self._prepare(sess, action_dict=TOU_ACTION)
+                self.prepare(sess, Plugin, 'tou', action_dict=TOU_ACTION)
                 with self.app.test_request_context():
                     csrf_token = sess.get_csrf_token()
                     data = json.dumps({'accept': True,
@@ -207,7 +189,7 @@ class ToUActionPluginTests(ActionsTestCase):
         mock_update.return_value = RTask()
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
-                self._prepare(sess, action_dict=TOU_ACTION)
+                self.prepare(sess, Plugin, 'tou', action_dict=TOU_ACTION)
                 with self.app.test_request_context():
                     csrf_token = sess.get_csrf_token()
                     data = json.dumps({'accept': False,
@@ -227,7 +209,7 @@ class ToUActionPluginTests(ActionsTestCase):
         mock_update.return_value = RTask()
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
-                self._prepare(sess, action_dict=TOU_ACTION)
+                self.prepare(sess, Plugin, 'tou', action_dict=TOU_ACTION)
                 with self.app.test_request_context():
                     csrf_token = sess.get_csrf_token()
                     data = json.dumps({'accept': True,

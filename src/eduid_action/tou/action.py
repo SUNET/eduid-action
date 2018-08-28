@@ -45,32 +45,17 @@ from eduid_userdb.actions.tou import ToUUserDB, ToUUser
 from eduid_am.tasks import update_attributes_keep_result
 
 
-PACKAGE_NAME = 'eduid_action.tou'
-
 http = urllib3.PoolManager()
 
 
 class Plugin(ActionPlugin):
 
+    PACKAGE_NAME = 'eduid_action.tou'
     steps = 1
 
     @classmethod
     def includeme(self, app):
         app.tou_db = ToUUserDB(app.config.get('MONGO_URI'))
-
-    def get_number_of_steps(self):
-        return self.steps
-
-    def get_url_for_bundle(self, action):
-        base = current_app.config.get('BUNDLES_URL')
-        bundle_name = '{}.js'
-        if current_app.config.get('DEBUG'):
-            bundle_name = '{}-bundle.dev.js'
-        url = '{}{}'.format(
-                base,
-                bundle_name.format(PACKAGE_NAME)
-                )
-        return url
 
     def get_config_for_bundle(self, action):
         url = current_app.config.get('INTERNAL_SIGNUP_URL')
@@ -78,7 +63,7 @@ class Plugin(ActionPlugin):
             r = http.request('GET', url + 'get-tous', retries=False)
             current_app.logger.debug('Response: {!r} with headers: '
                     '{!r}'.format(r, r.headers))
-            if r.status_code == 302:
+            if r.status == 302:
                 headers = {'Cookie': r.headers.get('Set-Cookie')}
                 current_app.logger.debug('Headers: {!r}'.format(headers))
                 r = http.request('GET', url + 'get-tous',
@@ -88,7 +73,7 @@ class Plugin(ActionPlugin):
         except Exception as e:
             current_app.logger.debug('Problem getting config: {!r}'.format(e))
             raise self.ActionError('tou.not-tou')
-        if r.status_code != 200:
+        if r.status != 200:
             current_app.logger.debug('Problem getting config, '
                                      'response status: '
                                      '{!r}'.format(r.status))

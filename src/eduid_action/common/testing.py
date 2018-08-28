@@ -37,12 +37,30 @@ from copy import deepcopy
 from contextlib import contextmanager
 from bson import ObjectId
 from datetime import datetime
+from mock import MagicMock
 
 from eduid_userdb.userdb import User
 from eduid_userdb.testing import MOCKED_USER_STANDARD
 from eduid_common.api.testing import EduidAPITestCase
 from eduid_webapp.actions.app import actions_init_app
 from eduid_action.common.action_abc import ActionPlugin
+
+
+class MockIdPApp:
+
+    class Config:
+        def __init__(self, **kwargs):
+            for key, val in kwargs.items():
+                setattr(self, key, val)
+
+    class Logger:
+        debug = MagicMock()
+        warning = MagicMock()
+
+    def __init__(self, actions_db, **kwargs):
+        self.config = self.Config(**kwargs)
+        self.logger = self.Logger()
+        self.actions_db = actions_db
 
 
 class TestingActionPlugin(ActionPlugin):
@@ -149,8 +167,10 @@ class ActionsTestCase(EduidAPITestCase):
         yield client
 
     def prepare_session(self, sess, action_dict=None, rm_action=False, validation_error=False,
-                         action_error=False, total_steps=1, current_step=1, add_action=True,
-                         set_plugin=True, plugin_name='dummy', plugin_class=TestingActionPlugin):
+                         action_error=False, total_steps=1, current_step=1,
+                         add_action=True, idp_session='dummy-session',
+                         set_plugin=True, plugin_name='dummy',
+                         plugin_class=TestingActionPlugin):
         if action_dict is None:
             action_dict = deepcopy(DUMMY_ACTION)
         if action_error:
@@ -166,13 +186,13 @@ class ActionsTestCase(EduidAPITestCase):
         sess['userid'] = str(action_dict['user_oid'])
         sess['current_action'] = action_dict
         sess['current_plugin'] = plugin_name
-        sess['idp_session'] = 'dummy-session'
+        sess['idp_session'] = idp_session
         sess['current_step'] = current_step
         sess['total_steps'] = total_steps
         if set_plugin:
             self.app.plugins[plugin_name] = plugin_class
 
-    def authenticate(self, client, sess, shared_key=None):
+    def authenticate(self, client, sess, shared_key=None, idp_session=None):
         userid = self.test_user_id
         nonce = 'dummy-nonce-xxxx'
         timestamp = str(hex(int(time.time())))
@@ -184,5 +204,11 @@ class ActionsTestCase(EduidAPITestCase):
                                                            token,
                                                            nonce,
                                                            timestamp)
+        if idp_session is not None:
+            url = '{}&session={}'.format(url, idp_session)
         response = client.get(url)
         return response
+
+    def prepare(self, session, plugin_class, plugin_name, **kwargs):
+        self.prepare_session(session, plugin_name=plugin_name,
+                plugin_class=plugin_class, **kwargs)
