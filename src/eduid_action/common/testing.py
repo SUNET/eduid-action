@@ -42,7 +42,7 @@ from mock import MagicMock
 from eduid_userdb.userdb import User
 from eduid_userdb.testing import MOCKED_USER_STANDARD
 from eduid_common.api.testing import EduidAPITestCase
-from eduid_webapp.actions.app import actions_init_app
+from eduid_action.common.action_app import actions_init_app
 from eduid_action.common.action_abc import ActionPlugin
 
 
@@ -111,9 +111,11 @@ TEST_CONFIG = {
         'CELERY_TASK_SERIALIZER': 'json',
     },
     'IDP_URL': 'https://example.com/idp',
+    'INTERNAL_SIGNUP_URL': 'https://example.com/signup',
     'PRESERVE_CONTEXT_ON_EXCEPTION': False,
     'BUNDLES_URL': 'http://example.com/bundles/',
-    'DEBUG': True,
+    'DEBUG': False,
+    'DEVEL_MODE': True,
     'ACTION_PLUGINS': []
 }
 
