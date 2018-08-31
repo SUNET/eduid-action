@@ -16,7 +16,6 @@ services:
 install:
   - pip install -U setuptools
   - pip install --index-url https://pypi.sunet.se -r requirements/testing.txt
-  - cp /home/travis/virtualenv/python2.7.14/lib/python2.7/site-packages/eduid_webapp/actions/templates /home/travis/virtualenv/python2.7.14/lib/python2.7/site-packages/eduid_webapp/
 # command to run tests
 script:
   - pip freeze
