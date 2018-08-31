@@ -1,0 +1,7 @@
+-r common.txt
+git+https://github.com/SUNET/eduid-webapp.git
+WebTest==2.0.18
+mock==1.0.1
+nose==1.2.1
+coverage==3.6
+nosexcover==1.0.8
