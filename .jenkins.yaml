@@ -9,4 +9,5 @@ slack:
   room: "eduid-builds"
 python_module: eduid_action
 clean_workspace: true
-
+publish_over_ssh:
+  - pypi.sunet.se
