@@ -7,7 +7,7 @@ version = '0.2.0'
 
 requires = [
     'python-u2flib-server',
-    'eduid-userdb>=0.0.4',
+    'eduid-userdb>=0.4.0b10',
     'eduid-common[webapp]>=0.3.3b3',
 ]
 
@@ -58,7 +58,10 @@ setup(name='eduid-action',
       author_email='enrique@cazalla.net',
       url='https://github.com/SUNET/',
       license='gpl',
-      packages=['eduid_action.tou'],
+      packages=[
+          'eduid_action.tou',
+          'eduid_action.mfa',
+          ],
       package_dir = {'': 'src'},
       namespace_packages=['eduid_action'],
       include_package_data=True,
