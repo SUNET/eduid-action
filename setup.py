@@ -5,20 +5,23 @@ import sys
 
 version = '0.2.0'
 
-requires = []
+requires = [
+    'python-u2flib-server',
+    'eduid-userdb>=0.0.4',
+    'eduid-common[webapp]>=0.3.3b3',
+]
 
 idp_extras = [
 ]
 
 am_extras = [
-    'eduid-userdb>=0.0.4',
 ]
 
 actions_extras = [
-    'eduid-webapp>=0.2.1b11',
 ]
 
 test_requires = [
+    'eduid-webapp>=0.2.1b11',
     'WebTest==2.0.15',
     'mock==1.0.1',
 ]

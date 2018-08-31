@@ -111,9 +111,11 @@ TEST_CONFIG = {
         'CELERY_TASK_SERIALIZER': 'json',
     },
     'IDP_URL': 'https://example.com/idp',
+    'INTERNAL_SIGNUP_URL': 'https://example.com/signup',
     'PRESERVE_CONTEXT_ON_EXCEPTION': False,
     'BUNDLES_URL': 'http://example.com/bundles/',
-    'DEBUG': True,
+    'DEBUG': False,
+    'DEVEL_MODE': True,
     'ACTION_PLUGINS': []
 }
 
