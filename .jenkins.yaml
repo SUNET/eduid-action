@@ -1,5 +1,5 @@
 builders:
-  - python
+  - script
 upstream:
   - eduid-userdb
   - eduid-common
@@ -7,7 +7,12 @@ triggers:
   cron: "@weekly"
 slack:
   room: "eduid-builds"
-python_module: eduid_action
+script:
+  - virtualenv venv
+  - . venv/bin/activate
+  - pip install -U setuptools
+  - pip install --index-url https://pypi.sunet.se -r requirements/testing.txt
+  - nosetests
 clean_workspace: true
 publish_over_ssh:
   - pypi.sunet.se

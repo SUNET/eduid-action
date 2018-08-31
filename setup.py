@@ -1,7 +1,4 @@
-from setuptools import setup, find_packages
-import os
-import sys
-
+from setuptools import setup
 
 version = '0.2.0'
 
@@ -20,29 +17,16 @@ am_extras = [
 actions_extras = [
 ]
 
-test_requires = [
-    'eduid-webapp>=0.2.1b11',
-    'WebTest==2.0.15',
-    'mock==1.0.1',
-]
-
-
-testing_extras = test_requires + [
-    'nose==1.3.3',
-    'coverage==3.7.1',
-    'nosexcover==1.0.10',
-]
-
 long_description = (
-    open('README.txt').read()
-    + '\n' +
-    'Contributors\n'
-    '============\n'
-    + '\n' +
-    open('CONTRIBUTORS.txt').read()
-    + '\n' +
-    open('CHANGES.txt').read()
-    + '\n')
+        open('README.txt').read()
+        + '\n' +
+        'Contributors\n'
+        '============\n'
+        + '\n' +
+        open('CONTRIBUTORS.txt').read()
+        + '\n' +
+        open('CHANGES.txt').read()
+        + '\n')
 
 setup(name='eduid-action',
       version=version,
@@ -51,8 +35,8 @@ setup(name='eduid-action',
       # Get more strings from
       # http://pypi.python.org/pypi?%3Aaction=list_classifiers
       classifiers=[
-        "Programming Language :: Python",
-        ],
+          "Programming Language :: Python",
+      ],
       keywords='',
       author='Enrique Perez Arnaud',
       author_email='enrique@cazalla.net',
@@ -61,8 +45,8 @@ setup(name='eduid-action',
       packages=[
           'eduid_action.tou',
           'eduid_action.mfa',
-          ],
-      package_dir = {'': 'src'},
+      ],
+      package_dir={'': 'src'},
       namespace_packages=['eduid_action'],
       include_package_data=True,
       zip_safe=False,
@@ -71,8 +55,7 @@ setup(name='eduid-action',
           'idp': idp_extras,
           'am': am_extras,
           'actions': actions_extras,
-          'testing': testing_extras,
-          },
+      },
       entry_points={
-          },
+      },
       )
