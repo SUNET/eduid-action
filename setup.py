@@ -43,6 +43,7 @@ setup(name='eduid-action',
       url='https://github.com/SUNET/',
       license='gpl',
       packages=[
+          'eduid_action.common',
           'eduid_action.tou',
           'eduid_action.mfa',
       ],
