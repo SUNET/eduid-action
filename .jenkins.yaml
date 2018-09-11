@@ -8,11 +8,11 @@ triggers:
 slack:
   room: "eduid-builds"
 script:
-  - virtualenv venv
-  - . venv/bin/activate
-  - pip install -U setuptools
-  - pip install --index-url https://pypi.sunet.se -r requirements/testing.txt
-  - nosetests
+  - "virtualenv venv"
+  - ". venv/bin/activate"
+  - "pip install -U setuptools"
+  - "pip install --index-url https://pypi.sunet.se -r requirements/testing.txt"
+  - "nosetests"
 clean_workspace: true
 publish_over_ssh:
   - pypi.sunet.se
