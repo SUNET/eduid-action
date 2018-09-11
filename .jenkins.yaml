@@ -8,6 +8,7 @@ triggers:
 slack:
   room: "eduid-builds"
 script:
+  - "echo $(docker inspect -f '{{.NetworkSettings.Gateway}}' $(hostname)) localhost >> /etc/hosts"
   - "virtualenv venv"
   - ". venv/bin/activate"
   - "pip install -U setuptools"
