@@ -151,8 +151,11 @@ class ActionPlugin:
         '''
         base = current_app.config.get('BUNDLES_URL')
         bundle_name = '{}.js'
-        if current_app.config.get('DEVEL_MODE', False):
+        env = current_app.config.get('ENVIRONMENT', 'dev')
+        if env == 'dev':
             bundle_name = '{}-bundle.dev.js'
+        elif env == 'staging':
+            bundle_name = '{}.staging.js'
         url = '{}{}'.format(
                 base,
                 bundle_name.format(self.PACKAGE_NAME)
