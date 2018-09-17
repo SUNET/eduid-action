@@ -200,8 +200,9 @@ class ActionsTestCase(EduidAPITestCase):
         timestamp = str(hex(int(time.time())))
         if shared_key is None:
             shared_key = self.app.config.get('TOKEN_LOGIN_SHARED_KEY')
-        token = sha256('{0}|{1}|{2}|{3}'.format(
-                       shared_key, userid, nonce, timestamp)).hexdigest()
+        data = '{0}|{1}|{2}|{3}'.format(shared_key, userid, nonce, timestamp)
+        hashed = sha256(data.encode('ascii'))
+        token = hashed.hexdigest()
         url = '/?userid={}&token={}&nonce={}&ts={}'.format(userid,
                                                            token,
                                                            nonce,
