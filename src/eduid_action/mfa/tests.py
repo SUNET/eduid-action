@@ -58,6 +58,7 @@ MFA_ACTION = {
 class MockTicket:
     def __init__(self, key):
         self.key = key
+        self.mfa_action_creds = {}
 
 
 class MFAActionPluginTests(ActionsTestCase):
