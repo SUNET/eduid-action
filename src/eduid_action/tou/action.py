@@ -88,12 +88,12 @@ class Plugin(ActionPlugin):
     def perform_step(self, action):
         if not request.get_json().get('accept', ''):
             raise self.ActionError('tou.must-accept')
-        userid = action.user_id
+        eppn = action.eppn
         version = action.params['version']
-        user = current_app.tou_db.get_user_by_id(userid, raise_on_missing=False)
+        user = current_app.tou_db.get_user_by_eppn(eppn, raise_on_missing=False)
         current_app.logger.debug('Loaded ToUUser {} from db'.format(user))
         if not user:
-            user = ToUUser(userid=userid, tou=[])
+            user = ToUUser(eppn=eppn, tou=[])
         current_app.logger.info('ToU version {} accepted by user {}'.format(version, user))
         event_id = ObjectId()
         user.tou.add(ToUEvent(
@@ -104,7 +104,7 @@ class Plugin(ActionPlugin):
             ))
         current_app.tou_db.save(user)
         current_app.logger.debug("Asking for sync of {} by Attribute Manager".format(user))
-        rtask = update_attributes_keep_result.delay('tou', str(userid))
+        rtask = update_attributes_keep_result.delay('tou', str(eppn))
         try:
             result = rtask.get(timeout=10)
             current_app.logger.debug("Attribute Manager sync result: {!r}".format(result))

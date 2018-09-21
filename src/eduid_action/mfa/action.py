@@ -57,8 +57,8 @@ class Plugin(ActionPlugin):
         app.config.setdefault('MFA_TESTING', False)
 
     def get_config_for_bundle(self, action):
-        userid = action.user_id
-        user = current_app.central_userdb.get_user_by_id(userid, raise_on_missing=False)
+        eppn = action.eppn
+        user = current_app.central_userdb.get_user_by_eppn(eppn, raise_on_missing=False)
         current_app.logger.debug('Loaded User {} from db'.format(user))
         if not user:
             raise self.ActionError('mfa.user-not-found')
@@ -112,8 +112,8 @@ class Plugin(ActionPlugin):
             'counter': counter,
         }))
 
-        userid = action.user_id
-        user = current_app.central_userdb.get_user_by_id(userid, raise_on_missing=False)
+        eppn = action.eppn
+        user = current_app.central_userdb.get_user_by_eppn(eppn, raise_on_missing=False)
         current_app.logger.debug('Loaded User {} from db (in perform_action)'.format(user))
 
         for this in user.credentials.filter(U2F).to_list():

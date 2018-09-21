@@ -10,7 +10,7 @@ form::
 
       {
         '_id': ObjectId('234567890123456789012301'),
-        'user_oid': ObjectId('123467890123456789014567'),
+        'eppn': 'hubba-bubba',
         'action': 'tou',
         'preference': 100,
         'params': {
