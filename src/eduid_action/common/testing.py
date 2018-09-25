@@ -184,7 +184,7 @@ class ActionsTestCase(EduidAPITestCase):
         if add_action:
             self.app.actions_db.add_action(data=deepcopy(action_dict))
         action_dict['_id'] = str(action_dict['_id'])
-        sess['eppn'] = str(action_dict['eppn'])
+        sess['user_eppn'] = str(action_dict['eppn'])
         sess['current_action'] = action_dict
         sess['current_plugin'] = plugin_name
         sess['idp_session'] = idp_session

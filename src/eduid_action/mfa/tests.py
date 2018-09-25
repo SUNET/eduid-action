@@ -48,7 +48,7 @@ __author__ = 'ft'
 
 MFA_ACTION = {
         '_id': ObjectId('234567890123456789012301'),
-        'eppn': MOCKED_USER_STANDARD['eppn'],
+        'eppn': MOCKED_USER_STANDARD['eduPersonPrincipalName'],
         'action': 'mfa',
         'session': 'mock-session',
         'preference': 1,
@@ -113,7 +113,7 @@ class MFAActionPluginTests(ActionsTestCase):
                     self.assertEqual(response.status_code, 200)
                     data = json.loads(response.data)
                     self.assertEquals(data['action'], False)
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppnb,
+                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn,
                         'mock-session')), 1)
 
     def test_get_mfa_action_no_db(self):
