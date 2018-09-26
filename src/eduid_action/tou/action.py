@@ -108,11 +108,11 @@ class Plugin(ActionPlugin):
         try:
             result = rtask.get(timeout=10)
             current_app.logger.debug("Attribute Manager sync result: {!r}".format(result))
-            current_app.actions_db.remove_action_by_id(action.action_id)
+            #current_app.actions_db.remove_action_by_id(action.action_id)
             current_app.logger.info('Removed completed action {}'.format(action))
             return {}
         except Exception as e:
-            current_app.logger.error("Failed Attribute Manager sync request: " + str(e) + str(type(e)) + '   ' + str(e.args))
+            current_app.logger.error("Failed Attribute Manager sync request: " + str(e))
             user.tou.remove(event_id)
             current_app.tou_db.save(user)
             raise self.ActionError('tou.sync-problem')
