@@ -65,35 +65,35 @@ def plugin_init(am_conf):
     return ToUAMPContext(am_conf['MONGO_URI'])
 
 
-def attribute_fetcher(context, eppn):
+def attribute_fetcher(context, user_id):
     """
     Read a user from the Signup private userdb and return an update
     dict to let the Attribute Manager update the use in the central
     eduid user database.
 
     :param context: Plugin context, see plugin_init above.
-    :param eppn: Unique identifier
+    :param user_id: Unique identifier
 
     :type context: ToUAMPContext
-    :type eppn: str
+    :type user_id: ObjectId
 
     :return: update dict
     :rtype: dict
     """
-    user = context.tou_userdb.get_user_by_eppn(eppn)
+    user = context.tou_userdb.get_user_by_id(user_id)
     if user is None:
-        raise UserDoesNotExist("No user matching eppn='%s'" % eppn)
+        raise UserDoesNotExist("No user matching _id='%s'" % user_id)
 
     user_dict = user.to_dict(old_userdb_format=True)
 
     import pprint
-    logger.debug("Processing user {!r}:\n{!s}".format(eppn,
+    logger.debug("Processing user {!r}:\n{!s}".format(user_id,
         pprint.pformat(user_dict)))
 
     attributes = {'$push': {'tou': user_dict['tou'][0]}}
 
     try:
-        context.tou_userdb.remove_user_by_eppn(eppn)
+        context.tou_userdb.remove_user_by_id(user_id)
     except pymongo.errors.OperationFailure:
         # eduid_am might not have write permission to the signup application's
         # collection. Just ignore cleanup if that is the case, and let that be

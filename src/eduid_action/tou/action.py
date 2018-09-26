@@ -108,7 +108,7 @@ class Plugin(ActionPlugin):
         try:
             result = rtask.get(timeout=10)
             current_app.logger.debug("Attribute Manager sync result: {!r}".format(result))
-            #current_app.actions_db.remove_action_by_id(action.action_id)
+            current_app.actions_db.remove_action_by_id(action.action_id)
             current_app.logger.info('Removed completed action {}'.format(action))
             return {}
         except Exception as e:
