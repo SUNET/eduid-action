@@ -170,7 +170,7 @@ class MFAActionPluginTests(ActionsTestCase):
                         'mock-session')), 1)
 
     def test_get_config_no_user(self):
-        self.app.central_userdb.remove_user_by_id(self.user.eppn)
+        self.app.central_userdb.remove_user_by_id(self.user.user_id)
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
