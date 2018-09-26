@@ -92,7 +92,7 @@ class Plugin(ActionPlugin):
         version = action.params['version']
         current_app.logger.debug('Loading User {} from db'.format(eppn))
         central_user = current_app.central_userdb.get_user_by_eppn(eppn)
-        user = ToUUser.from_user(central_user, current_app.tou_db, raise_on_unknown=False)
+        user = ToUUser.from_user(central_user, current_app.tou_db)
         current_app.logger.debug('Loaded ToUUser {} from db'.format(user))
         current_app.logger.info('ToU version {} accepted by user {}'.format(version, user))
         event_id = ObjectId()
