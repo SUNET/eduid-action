@@ -105,7 +105,7 @@ TEST_CONFIG = {
     'LOG_LEVEL': 'DEBUG',
     'AM_BROKER_URL': 'amqp://eduid:eduid_pw@rabbitmq/am',
     'MSG_BROKER_URL': 'amqp://eduid:eduid_pw@rabbitmq/msg',
-    'TOKEN_LOGIN_SHARED_KEY': 'shared_secret_Eifool0ua0eiph7ooch0',
+    'TOKEN_LOGIN_SHARED_KEY': 'shared_secret_Eifool0ua0eiph7ooc',
     'CELERY_CONFIG': {
         'CELERY_RESULT_BACKEND': 'amqp',
         'CELERY_TASK_SERIALIZER': 'json',
