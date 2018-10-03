@@ -64,8 +64,7 @@ def add_actions(idp_app, user, ticket):
         idp_app.logger.warning('No actions_db - aborting MFA action')
         return None
 
-    existing_actions = idp_app.actions_db.get_actions(userid = user.user_id,
-                                                      session = ticket.key,
+    existing_actions = idp_app.actions_db.get_actions(user.user_id, ticket.key,
                                                       action_type = 'mfa',
                                                       )
     if existing_actions and len(existing_actions) > 0:
@@ -75,7 +74,7 @@ def add_actions(idp_app, user, ticket):
 
     idp_app.logger.debug('User must authenticate with U2F token (has {} token(s))'.format(len(u2f_tokens)))
     idp_app.actions_db.add_action(
-        userid = user.user_id,
+        user.user_id,
         action_type = 'mfa',
         preference = 1,
         session = ticket.key,  # XXX double-check that ticket.key is not sensitive to disclose to the user
