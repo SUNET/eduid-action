@@ -93,7 +93,9 @@ class Plugin(ActionPlugin):
         user = current_app.tou_db.get_user_by_id(userid, raise_on_missing=False)
         current_app.logger.debug('Loaded ToUUser {} from db'.format(user))
         if not user:
-            user = ToUUser(userid=userid, tou=[])
+            central_user = current_app.central_userdb.get_user_by_id(userid, raise_on_missing=False)
+            user = ToUUser(data=central_user.to_dict())
+            user.modified_ts = None
         current_app.logger.info('ToU version {} accepted by user {}'.format(version, user))
         event_id = ObjectId()
         user.tou.add(ToUEvent(
@@ -102,7 +104,7 @@ class Plugin(ActionPlugin):
             created_ts = datetime.utcnow(),
             event_id = event_id
             ))
-        current_app.tou_db.save(user)
+        current_app.tou_db.save(user, check_sync=False)
         current_app.logger.debug("Asking for sync of {} by Attribute Manager".format(user))
         rtask = update_attributes_keep_result.delay('tou', str(userid))
         try:
