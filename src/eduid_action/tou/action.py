@@ -63,7 +63,7 @@ class Plugin(ActionPlugin):
             r = http.request('GET', url + 'get-tous', retries=False)
             current_app.logger.debug('Response: {!r} with headers: '
                     '{!r}'.format(r, r.headers))
-            if r.status_code == 302:
+            if '302' in str(getattr(r, 'status_code', r.status)):
                 headers = {'Cookie': r.headers.get('Set-Cookie')}
                 current_app.logger.debug('Headers: {!r}'.format(headers))
                 r = http.request('GET', url + 'get-tous',
@@ -73,10 +73,10 @@ class Plugin(ActionPlugin):
         except Exception as e:
             current_app.logger.debug('Problem getting config: {!r}'.format(e))
             raise self.ActionError('tou.not-tou')
-        if r.status_code != 200:
+        if '200' not in str(getattr(r, 'status_code', r.status)):
             current_app.logger.debug('Problem getting config, '
                                      'response status: '
-                                     '{!r}'.format(r.status_code))
+                                     '{!r}'.format(r.status))
             raise self.ActionError('tou.no-tou')
         return {
             'version': action.params['version'],
@@ -88,9 +88,11 @@ class Plugin(ActionPlugin):
     def perform_step(self, action):
         if not request.get_json().get('accept', ''):
             raise self.ActionError('tou.must-accept')
-        userid = action.user_id
+        eppn = action.eppn
         version = action.params['version']
-        user = current_app.tou_db.get_user_by_id(userid, raise_on_missing=False)
+        current_app.logger.debug('Loading User {} from db'.format(eppn))
+        central_user = current_app.central_userdb.get_user_by_eppn(eppn)
+        user = ToUUser.from_user(central_user, current_app.tou_db)
         current_app.logger.debug('Loaded ToUUser {} from db'.format(user))
         if not user:
             central_user = current_app.central_userdb.get_user_by_id(userid, raise_on_missing=False)
@@ -106,7 +108,7 @@ class Plugin(ActionPlugin):
             ))
         current_app.tou_db.save(user, check_sync=False)
         current_app.logger.debug("Asking for sync of {} by Attribute Manager".format(user))
-        rtask = update_attributes_keep_result.delay('tou', str(userid))
+        rtask = update_attributes_keep_result.delay('tou', str(user.user_id))
         try:
             result = rtask.get(timeout=10)
             current_app.logger.debug("Attribute Manager sync result: {!r}".format(result))
