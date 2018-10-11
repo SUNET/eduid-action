@@ -43,6 +43,7 @@ from eduid_action.common.testing import MockIdPApp
 from eduid_action.common.testing import ActionsTestCase
 from eduid_action.mfa.action import Plugin
 from eduid_action.mfa.idp import add_actions
+from eduid_userdb.exceptions import UserDoesNotExist
 
 __author__ = 'ft'
 
@@ -178,13 +179,8 @@ class MFAActionPluginTests(ActionsTestCase):
                     add_actions(mock_idp_app, self.user,
                             MockTicket('mock-session'))
                     self.authenticate(client, sess, idp_session='mock-session')
-                    response = client.get('/get-actions')
-                    self.assertEqual(response.status_code, 200)
-                    response = client.get('/config')
-                    data = json.loads(response.data)
-                    self.assertEquals(data['payload']['message'], 'mfa.user-not-found')
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn,
-                        'mock-session')), 1)
+                    with self.assertRaises(UserDoesNotExist):
+                        client.get('/get-actions')
 
     def test_action_no_token_response(self):
         with self.session_cookie(self.browser) as client:
