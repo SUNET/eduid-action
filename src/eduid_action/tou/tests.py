@@ -49,7 +49,7 @@ from eduid_action.tou.idp import add_actions
 
 TOU_ACTION = {
         '_id': ObjectId('234567890123456789012301'),
-        'user_oid': ObjectId('012345678901234567890123'),
+        'eppn': 'hubba-bubba',
         'action': 'tou',
         'preference': 100,
         'params': {

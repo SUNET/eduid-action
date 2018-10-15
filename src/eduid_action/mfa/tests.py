@@ -43,12 +43,13 @@ from eduid_action.common.testing import MockIdPApp
 from eduid_action.common.testing import ActionsTestCase
 from eduid_action.mfa.action import Plugin
 from eduid_action.mfa.idp import add_actions
+from eduid_userdb.exceptions import UserDoesNotExist
 
 __author__ = 'ft'
 
 MFA_ACTION = {
         '_id': ObjectId('234567890123456789012301'),
-        'user_oid': MOCKED_USER_STANDARD['_id'],
+        'eppn': MOCKED_USER_STANDARD['eduPersonPrincipalName'],
         'action': 'mfa',
         'session': 'mock-session',
         'preference': 1,
@@ -98,7 +99,7 @@ class MFAActionPluginTests(ActionsTestCase):
                     self.assertEquals(data['action'], True)
                     self.assertEquals(data['url'], 
                             'http://example.com/bundles/eduid_action.mfa-bundle.dev.js')
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.user_id,
+                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn,
                         'mock-session')), 1)
 
     def test_get_mfa_action_wrong_session(self):
@@ -113,7 +114,7 @@ class MFAActionPluginTests(ActionsTestCase):
                     self.assertEqual(response.status_code, 200)
                     data = json.loads(response.data)
                     self.assertEquals(data['action'], False)
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.user_id,
+                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn,
                         'mock-session')), 1)
 
     def test_get_mfa_action_no_db(self):
@@ -128,7 +129,7 @@ class MFAActionPluginTests(ActionsTestCase):
                     self.assertEqual(response.status_code, 200)
                     data = json.loads(response.data)
                     self.assertEquals(data['action'], False)
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.user_id,
+                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn,
                         'mock-session')), 0)
 
     def test_get_mfa_action_no_u2f_token(self):
@@ -147,7 +148,7 @@ class MFAActionPluginTests(ActionsTestCase):
                     self.assertEqual(response.status_code, 200)
                     data = json.loads(response.data)
                     self.assertEquals(data['action'], False)
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.user_id,
+                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn,
                         'mock-session')), 0)
 
     def test_get_config(self):
@@ -166,7 +167,7 @@ class MFAActionPluginTests(ActionsTestCase):
                     self.assertEquals(u2f_data["registeredKeys"][0]["keyHandle"], "test_key_handle")
                     self.assertEquals(u2f_data["registeredKeys"][0]["version"], "U2F_V2")
                     self.assertEquals(u2f_data["appId"], "https://example.com")
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.user_id,
+                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn,
                         'mock-session')), 1)
 
     def test_get_config_no_user(self):
@@ -178,13 +179,8 @@ class MFAActionPluginTests(ActionsTestCase):
                     add_actions(mock_idp_app, self.user,
                             MockTicket('mock-session'))
                     self.authenticate(client, sess, idp_session='mock-session')
-                    response = client.get('/get-actions')
-                    self.assertEqual(response.status_code, 200)
-                    response = client.get('/config')
-                    data = json.loads(response.data)
-                    self.assertEquals(data['payload']['message'], 'mfa.user-not-found')
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.user_id,
-                        'mock-session')), 1)
+                    with self.assertRaises(UserDoesNotExist):
+                        client.get('/get-actions')
 
     def test_action_no_token_response(self):
         with self.session_cookie(self.browser) as client:
@@ -198,7 +194,7 @@ class MFAActionPluginTests(ActionsTestCase):
                     self.assertEquals(response.status_code, 200)
                     data = json.loads(response.data)
                     self.assertEquals(data['payload']['message'], "mfa.no-token-response")
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.user_id,
+                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn,
                         'mock-session')), 1)
 
     @patch('eduid_action.mfa.action.complete_authentication')
@@ -217,7 +213,7 @@ class MFAActionPluginTests(ActionsTestCase):
                     self.assertEquals(response.status_code, 200)
                     data = json.loads(response.data)
                     self.assertEquals(data['payload']['message'], "mfa.unknown-token")
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.user_id,
+                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn,
                         'mock-session')), 1)
 
     @patch('eduid_action.mfa.action.complete_authentication')
@@ -252,10 +248,10 @@ class MFAActionPluginTests(ActionsTestCase):
                             content_type=self.content_type_json)
                     self.assertEquals(response.status_code, 200)
                     data = json.loads(response.data)
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.user_id,
+                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn,
                         'mock-session')), 1)
                     mock_idp_app = MockIdPApp(self.app.actions_db)
                     add_actions(mock_idp_app, self.user,
                             MockTicket('mock-session'))
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.user_id,
+                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn,
                         'mock-session')), 0)

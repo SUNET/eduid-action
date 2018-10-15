@@ -90,7 +90,7 @@ class TestingActionPlugin(ActionPlugin):
 
 DUMMY_ACTION = {
     '_id': ObjectId('234567890123456789012301'),
-    'user_oid': ObjectId('123467890123456789014567'),
+    'eppn': 'hubba-bubba',
     'action': 'dummy',
     'preference': 100, 
     'params': {
@@ -105,7 +105,7 @@ TEST_CONFIG = {
     'LOG_LEVEL': 'DEBUG',
     'AM_BROKER_URL': 'amqp://eduid:eduid_pw@rabbitmq/am',
     'MSG_BROKER_URL': 'amqp://eduid:eduid_pw@rabbitmq/msg',
-    'TOKEN_LOGIN_SHARED_KEY': 'shared_secret_Eifool0ua0eiph7ooch0',
+    'TOKEN_LOGIN_SHARED_KEY': 'shared_secret_Eifool0ua0eiph7ooc',
     'CELERY_CONFIG': {
         'CELERY_RESULT_BACKEND': 'amqp',
         'CELERY_TASK_SERIALIZER': 'json',
@@ -128,7 +128,7 @@ class ActionsTestCase(EduidAPITestCase):
         user_data['modified_ts'] = datetime.utcnow()
         self.user = User(data=user_data)
         self.app.central_userdb.save(self.user, check_sync=False)
-        self.test_user_id = '012345678901234567890123'
+        self.test_eppn = 'hubba-bubba'
 
     def tearDown(self):
         self.app.central_userdb._drop_whole_collection()
@@ -184,8 +184,7 @@ class ActionsTestCase(EduidAPITestCase):
         if add_action:
             self.app.actions_db.add_action(data=deepcopy(action_dict))
         action_dict['_id'] = str(action_dict['_id'])
-        action_dict['user_oid'] = str(action_dict['user_oid'])
-        sess['userid'] = str(action_dict['user_oid'])
+        sess['user_eppn'] = str(action_dict['eppn'])
         sess['current_action'] = action_dict
         sess['current_plugin'] = plugin_name
         sess['idp_session'] = idp_session
@@ -195,18 +194,18 @@ class ActionsTestCase(EduidAPITestCase):
             self.app.plugins[plugin_name] = plugin_class
 
     def authenticate(self, client, sess, shared_key=None, idp_session=None):
-        userid = self.test_user_id
+        eppn = self.test_eppn
         nonce = 'dummy-nonce-xxxx'
         timestamp = str(hex(int(time.time())))
         if shared_key is None:
             shared_key = self.app.config.get('TOKEN_LOGIN_SHARED_KEY')
-        data = '{0}|{1}|{2}|{3}'.format(shared_key, userid, nonce, timestamp)
+        data = '{0}|{1}|{2}|{3}'.format(shared_key, eppn, nonce, timestamp)
         hashed = sha256(data.encode('ascii'))
         token = hashed.hexdigest()
-        url = '/?userid={}&token={}&nonce={}&ts={}'.format(userid,
-                                                           token,
-                                                           nonce,
-                                                           timestamp)
+        url = '/?eppn={}&token={}&nonce={}&ts={}'.format(eppn,
+                                                         token,
+                                                         nonce,
+                                                         timestamp)
         if idp_session is not None:
             url = '{}&session={}'.format(url, idp_session)
         response = client.get(url)

@@ -90,7 +90,7 @@ def attribute_fetcher(context, user_id):
     logger.debug("Processing user {!r}:\n{!s}".format(user_id,
         pprint.pformat(user_dict)))
 
-    attributes = {'$push': {'tou': user_dict['tou'][0]}}
+    attributes = {'$set': {'tou': user_dict['tou']}}
 
     try:
         context.tou_userdb.remove_user_by_id(user_id)
