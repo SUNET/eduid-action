@@ -36,16 +36,12 @@ import json
 from bson import ObjectId
 from datetime import datetime
 
-import urllib3
 from flask import current_app, request, abort
 
 from eduid_action.common.action_abc import ActionPlugin
 from eduid_userdb.tou import ToUEvent
 from eduid_userdb.actions.tou import ToUUserDB, ToUUser
 from eduid_am.tasks import update_attributes_keep_result
-
-
-http = urllib3.PoolManager()
 
 
 class Plugin(ActionPlugin):
@@ -58,29 +54,9 @@ class Plugin(ActionPlugin):
         app.tou_db = ToUUserDB(app.config.get('MONGO_URI'))
 
     def get_config_for_bundle(self, action):
-        url = current_app.config.get('INTERNAL_SIGNUP_URL')
-        try:
-            r = http.request('GET', url + 'get-tous', retries=False)
-            current_app.logger.debug('Response: {!r} with headers: '
-                    '{!r}'.format(r, r.headers))
-            if '302' in str(getattr(r, 'status_code', r.status)):
-                headers = {'Cookie': r.headers.get('Set-Cookie')}
-                current_app.logger.debug('Headers: {!r}'.format(headers))
-                r = http.request('GET', url + 'get-tous',
-                                 retries=False, headers=headers)
-                current_app.logger.debug('2nd response: {!r} with headers: '
-                        '{!r}'.format(r, r.headers))
-        except Exception as e:
-            current_app.logger.debug('Problem getting config: {!r}'.format(e))
-            raise self.ActionError('tou.not-tou')
-        if '200' not in str(getattr(r, 'status_code', r.status)):
-            current_app.logger.debug('Problem getting config, '
-                                     'response status: '
-                                     '{!r}'.format(r.status))
-            raise self.ActionError('tou.no-tou')
         return {
             'version': action.params['version'],
-            'tous': json.loads(r.data)['payload'],
+            'tous': current_app.get_tous(),
             'available_languages': current_app.config.get('AVAILABLE_LANGUAGES')
             }
 
