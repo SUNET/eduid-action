@@ -1,5 +1,5 @@
 -r common.txt
-git+https://github.com/SUNET/eduid-webapp.git@master
+eduid-webapp>=0.2.2b4
 WebTest==2.0.30
 mock==2.0.0
 nose==1.3.7
