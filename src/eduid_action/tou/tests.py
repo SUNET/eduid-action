@@ -35,6 +35,7 @@ __author__ = 'eperez'
 
 
 import json
+import unittest
 from mock import patch
 from datetime import datetime
 from bson import ObjectId
@@ -45,6 +46,13 @@ from eduid_action.common.testing import MockIdPApp
 from eduid_action.common.testing import ActionsTestCase
 from eduid_action.tou.action import Plugin
 from eduid_action.tou.idp import add_actions
+
+
+TOUS_IN_ACTIONS = True
+try:
+    from eduid_webapp.actions.app import _get_tous
+except ImportError:
+    TOUS_IN_ACTIONS = False
 
 
 TOU_ACTION = {
@@ -111,6 +119,7 @@ class ToUActionPluginTests(ActionsTestCase):
                     data = json.loads(response.data)
                     self.assertEquals(data['action'], False)
 
+    @unittest.skipUnless(TOUS_IN_ACTIONS, "Still using old actions")
     def test_get_config(self):
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
