@@ -71,6 +71,7 @@ class ToUActionPluginTests(ActionsTestCase):
     def update_actions_config(self, config):
         config['INTERNAL_SIGNUP_URL'] = 'http://example.com/signup'
         config['ACTION_PLUGINS'].append('tou')
+        config['TOU_VERSION'] = 'test-version'
         return config
 
     def tou_accepted(self, version):
