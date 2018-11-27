@@ -35,6 +35,7 @@ __author__ = 'eperez'
 
 
 import json
+import unittest
 from mock import patch
 from datetime import datetime
 from bson import ObjectId
@@ -45,6 +46,13 @@ from eduid_action.common.testing import MockIdPApp
 from eduid_action.common.testing import ActionsTestCase
 from eduid_action.tou.action import Plugin
 from eduid_action.tou.idp import add_actions
+
+
+TOUS_IN_ACTIONS = True
+try:
+    from eduid_webapp.actions.app import _get_tous
+except ImportError:
+    TOUS_IN_ACTIONS = False
 
 
 TOU_ACTION = {
@@ -71,6 +79,7 @@ class ToUActionPluginTests(ActionsTestCase):
     def update_actions_config(self, config):
         config['INTERNAL_SIGNUP_URL'] = 'http://example.com/signup'
         config['ACTION_PLUGINS'].append('tou')
+        config['TOU_VERSION'] = 'test-version'
         return config
 
     def tou_accepted(self, version):
@@ -110,14 +119,8 @@ class ToUActionPluginTests(ActionsTestCase):
                     data = json.loads(response.data)
                     self.assertEquals(data['action'], False)
 
-    @patch('eduid_action.tou.action.http.request')
-    def test_get_config(self, mock_http_request):
-        data = json.dumps({'payload':{
-                               'en': 'testing the ToU',
-                               'sv': 'testa ToU'}
-                               })
-        resp = Response(response=data, status=200, mimetype='application/json')
-        mock_http_request.return_value = resp
+    @unittest.skipUnless(TOUS_IN_ACTIONS, "Still using old actions")
+    def test_get_config(self):
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
@@ -128,39 +131,7 @@ class ToUActionPluginTests(ActionsTestCase):
                     self.assertEqual(response.status_code, 200)
                     response = client.get('/config')
                     data = json.loads(response.data)
-                    self.assertEquals(data['payload']['tous']['sv'], 'testa ToU')
-
-    @patch('eduid_action.tou.action.http.request')
-    def test_get_config_302_tous(self, mock_http_request):
-        resp = Response(status=302, mimetype='application/json')
-        mock_http_request.return_value = resp
-        with self.session_cookie(self.browser) as client:
-            with client.session_transaction() as sess:
-                with self.app.test_request_context():
-                    mock_idp_app = MockIdPApp(self.app.actions_db, tou_version='test-version')
-                    add_actions(mock_idp_app, self.user, None)
-                    self.authenticate(client, sess)
-                    response = client.get('/get-actions')
-                    self.assertEqual(response.status_code, 200)
-                    response = client.get('/config')
-                    data = json.loads(response.data)
-                    self.assertEquals(data['payload']['message'], 'tou.no-tou')
-
-    @patch('eduid_action.tou.action.http.request')
-    def test_get_config_500_tous(self, mock_http_request):
-        resp = Response(status=500, mimetype='application/json')
-        mock_http_request.return_value = resp
-        with self.session_cookie(self.browser) as client:
-            with client.session_transaction() as sess:
-                with self.app.test_request_context():
-                    mock_idp_app = MockIdPApp(self.app.actions_db, tou_version='test-version')
-                    add_actions(mock_idp_app, self.user, None)
-                    self.authenticate(client, sess)
-                    response = client.get('/get-actions')
-                    self.assertEqual(response.status_code, 200)
-                    response = client.get('/config')
-                    data = json.loads(response.data)
-                    self.assertEquals(data['payload']['message'], 'tou.no-tou')
+                    self.assertEquals(data['payload']['tous']['sv'], u'test tou svenska')
 
     @patch('eduid_action.tou.action.update_attributes_keep_result.delay')
     def test_get_accept_tou(self, mock_update):
