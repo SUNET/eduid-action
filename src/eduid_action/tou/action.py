@@ -50,16 +50,19 @@ class Plugin(ActionPlugin):
     steps = 1
 
     @classmethod
-    def includeme(self, app):
+    def includeme(cls, app):
         app.tou_db = ToUUserDB(app.config.get('MONGO_URI'))
 
     def get_config_for_bundle(self, action):
+        tous = current_app.get_tous(version=action.params['version'])
+        if not tous:
+            current_app.logger.error('Could not load any TOUs')
+            raise self.ActionError('tou.no-tou')
         return {
             'version': action.params['version'],
-            'tous': current_app.get_tous(),
+            'tous': tous,
             'available_languages': current_app.config.get('AVAILABLE_LANGUAGES')
-            }
-
+        }
 
     def perform_step(self, action):
         if not request.get_json().get('accept', ''):
