@@ -1,6 +1,6 @@
 from setuptools import setup
 
-version = '0.2.1b5'
+version = '0.2.1b7'
 
 requires = [
     'python-u2flib-server',
