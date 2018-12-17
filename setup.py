@@ -4,7 +4,7 @@ version = '0.2.1b5'
 
 requires = [
     'python-u2flib-server',
-    'python-fido2',
+    'fido2',
     'eduid-userdb>=0.4.0b12',
     'eduid-common[webapp]>=0.3.5b9',
 ]
