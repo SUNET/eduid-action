@@ -30,12 +30,23 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 import json
+import struct
 from flask import current_app, request, session
 
 from eduid_action.common.action_abc import ActionPlugin
 from eduid_userdb.credentials import U2F
 
 from u2flib_server.u2f import begin_authentication, complete_authentication
+from u2flib_server.utils import websafe_decode
+
+import fido2
+from fido2.server import RelyingParty, Fido2Server
+from fido2.ctap2 import AttestedCredentialData
+from fido2.cose import ES256
+
+# XXX should these be on current_app maybe?
+fido2rp = RelyingParty('eduid.se', 'eduID')
+fido2server = Fido2Server(fido2rp)
 
 
 __author__ = 'ft'
@@ -70,6 +81,7 @@ class Plugin(ActionPlugin):
             raise self.ActionError('mfa.user-not-found')
 
         u2f_tokens = []
+        fido2_credentials = []
         for this in user.credentials.filter(U2F).to_list():
             data = {'version': this.version,
                     'keyHandle': this.keyhandle,
@@ -77,17 +89,32 @@ class Plugin(ActionPlugin):
                     #'appId': APP_ID,
                     }
             u2f_tokens.append(data)
+            # Transform data to FIDO2
+            keyhandle_d = websafe_decode(this.keyhandle)
+            cose_pubkey = fido2.cose.ES256.from_ctap1(websafe_decode(this.public_key))
+            aaguid = b'\0' * 16
+            c_len = struct.pack('>H', len(keyhandle_d))
+            pk_cbor = fido2.ctap2.cbor.dump_dict(cose_pubkey)
+            acd = AttestedCredentialData(aaguid + c_len + keyhandle_d + pk_cbor)
+            fido2_credentials.append(acd)
+
 
         current_app.logger.debug('U2F tokens for user {}: {}'.format(user, u2f_tokens))
 
         challenge = begin_authentication(current_app.config['U2F_APP_ID'], u2f_tokens)
+        fido2data, fido2state = fido2server.authenticate_begin(fido2_credentials)
+        current_app.logger.debug('FIDO2 data: {}'.format(fido2data))
+        current_app.logger.debug('FIDO2 state: {}'.format(fido2state))
 
         # Save the challenge to be used when validating the signature in perform_action() below
         session[self.PACKAGE_NAME + '.u2f.challenge'] = challenge.json
+        session[self.PACKAGE_NAME + '.fido2.state'] = fido2state
 
         current_app.logger.debug('U2F challenge for user {}: {}'.format(user, challenge.data_for_client))
 
-        config = {'u2fdata': json.dumps(challenge.data_for_client)}
+        config = {'u2fdata': json.dumps(challenge.data_for_client),
+                  'webauthn_options': fido2data,
+                  }
         if current_app.config.get('MFA_TESTING', False) == True:
             current_app.logger.info('MFA test mode is enabled')
             config['testing'] = True
