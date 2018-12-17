@@ -103,12 +103,14 @@ class Plugin(ActionPlugin):
 
         challenge = begin_authentication(current_app.config['U2F_APP_ID'], u2f_tokens)
         fido2data = fido2server.authenticate_begin(fido2_credentials)
-        current_app.logger.debug('FIDO2 data: {}'.format(fido2data))
+        import pprint
+        current_app.logger.debug('FIDO2 data: {}'.format(pprint.pformat(fido2data)))
         # NOTE: this probably won't work, just to test
         import binascii
         fido2data['publicKey']['challenge'] = binascii.hexlify(fido2data['publicKey']['challenge'])
         for v in fido2data['publicKey']['allowCredentials']:
             v['id'] = binascii.hexlify(v['id'])
+        current_app.logger.debug('FIDO2 data after hex-encoding: {}'.format(pprint.pformat(fido2data)))
         #current_app.logger.debug('FIDO2 state: {}'.format(fido2state))
 
         # Save the challenge to be used when validating the signature in perform_action() below
