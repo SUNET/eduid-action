@@ -106,10 +106,10 @@ class Plugin(ActionPlugin):
         import pprint
         current_app.logger.debug('FIDO2 data: {}'.format(pprint.pformat(fido2data)))
         # NOTE: this probably won't work, just to test
-        import binascii
-        fido2data['publicKey']['challenge'] = binascii.hexlify(fido2data['publicKey']['challenge'])
+        import base64
+        fido2data['publicKey']['challenge'] = base64.b64encode(fido2data['publicKey']['challenge'])
         for v in fido2data['publicKey']['allowCredentials']:
-            v['id'] = binascii.hexlify(v['id'])
+            v['id'] = base64.b64encode(v['id'])
         current_app.logger.debug('FIDO2 data after hex-encoding: {}'.format(pprint.pformat(fido2data)))
         #current_app.logger.debug('FIDO2 state: {}'.format(fido2state))
 
