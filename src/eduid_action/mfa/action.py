@@ -30,6 +30,8 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 import json
+import pprint
+import base64
 import struct
 from flask import current_app, request, session
 
@@ -45,8 +47,6 @@ from fido2.ctap2 import AttestedCredentialData
 from fido2.cose import ES256
 
 # XXX should these be on current_app maybe?
-fido2rp = RelyingParty('eduid.se', 'eduID')
-fido2server = Fido2Server(fido2rp)
 
 
 __author__ = 'ft'
@@ -61,7 +61,8 @@ class Plugin(ActionPlugin):
     def includeme(cls, app):
 
         for item in ('U2F_APP_ID',
-                     'U2F_VALID_FACETS'):
+                     'U2F_VALID_FACETS',
+                     'FIDO2_RP_ID'):
             if app.config.get(item) is None:
                 app.logger.error('The "{}" configuration option is required'.format(item))
 
@@ -102,16 +103,15 @@ class Plugin(ActionPlugin):
         current_app.logger.debug('U2F tokens for user {}: {}'.format(user, u2f_tokens))
 
         challenge = begin_authentication(current_app.config['U2F_APP_ID'], u2f_tokens)
+
+        fido2rp = RelyingParty(current_app.config['FIDO2_RP_ID'], 'eduID')
+        fido2server = Fido2Server(fido2rp)
         fido2data = fido2server.authenticate_begin(fido2_credentials)
-        import pprint
-        current_app.logger.debug('FIDO2 data: {}'.format(pprint.pformat(fido2data)))
-        # NOTE: this probably won't work, just to test
-        import base64
+        # Base64 encode binary data so the fido2data can be JSON encoded
         fido2data['publicKey']['challenge'] = base64.b64encode(fido2data['publicKey']['challenge'])
         for v in fido2data['publicKey']['allowCredentials']:
             v['id'] = base64.b64encode(v['id'])
-        current_app.logger.debug('FIDO2 data after hex-encoding: {}'.format(pprint.pformat(fido2data)))
-        #current_app.logger.debug('FIDO2 state: {}'.format(fido2state))
+        current_app.logger.debug('FIDO2 data after b64-encoding: {}'.format(pprint.pformat(fido2data)))
 
         # Save the challenge to be used when validating the signature in perform_action() below
         session[self.PACKAGE_NAME + '.u2f.challenge'] = challenge.json
