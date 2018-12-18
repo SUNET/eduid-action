@@ -83,6 +83,7 @@ class MFAActionPluginTests(ActionsTestCase):
         config['U2F_VALID_FACETS'] = [
             'https://dashboard.dev.eduid.se',
             'https://idp.dev.eduid.se']
+        config['FIDO2_RP_ID'] = 'idp.example.com'
         return config
 
     def test_get_mfa_action(self):
