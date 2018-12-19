@@ -91,16 +91,16 @@ class Plugin(ActionPlugin):
                     }
             u2f_tokens.append(data)
             # Transform data to FIDO2
-            keyhandle_d = websafe_decode(this.keyhandle)
+            credential_id = websafe_decode(this.keyhandle)
             cose_pubkey = fido2.cose.ES256.from_ctap1(websafe_decode(this.public_key))
             aaguid = b'\0' * 16
-            c_len = struct.pack('>H', len(keyhandle_d))
+            c_len = struct.pack('>H', len(credential_id))
             pk_cbor = fido2.ctap2.cbor.dump_dict(cose_pubkey)
-            acd = AttestedCredentialData(aaguid + c_len + keyhandle_d + pk_cbor)
+            acd = AttestedCredentialData(aaguid + c_len + credential_id + pk_cbor)
             fido2_credentials.append(acd)
 
 
-        current_app.logger.debug('U2F tokens for user {}: {}'.format(user, u2f_tokens))
+        current_app.logger.debug('U2F tokens for user {}:\n{}'.format(user, pprint.pformat(u2f_tokens)))
 
         challenge = begin_authentication(current_app.config['U2F_APP_ID'], u2f_tokens)
 
@@ -111,6 +111,7 @@ class Plugin(ActionPlugin):
         fido2data['publicKey']['challenge'] = base64.b64encode(fido2data['publicKey']['challenge'])
         for v in fido2data['publicKey']['allowCredentials']:
             v['id'] = base64.b64encode(v['id'])
+        current_app.logger.debug('FIDO2 credentials for user {}:\n{}'.format(user, pprint.pformat(fido2_credentials)))
         current_app.logger.debug('FIDO2 data after b64-encoding: {}'.format(pprint.pformat(fido2data)))
 
         # Save the challenge to be used when validating the signature in perform_action() below
