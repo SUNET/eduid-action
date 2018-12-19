@@ -111,7 +111,7 @@ class Plugin(ActionPlugin):
         fido2server = Fido2Server(fido2rp)
         fido2data = fido2server.authenticate_begin(fido2_credentials)
         if appid:
-            fido2data['extensions'] = {'appid': appid}
+            fido2data['publicKey']['extensions'] = {'appid': appid}
         # Base64 encode binary data so the fido2data can be JSON encoded
         fido2data['publicKey']['challenge'] = base64.b64encode(fido2data['publicKey']['challenge'])
         for v in fido2data['publicKey']['allowCredentials']:
