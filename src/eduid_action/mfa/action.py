@@ -83,6 +83,7 @@ class Plugin(ActionPlugin):
 
         u2f_tokens = []
         fido2_credentials = []
+        appid = None
         for this in user.credentials.filter(U2F).to_list():
             data = {'version': this.version,
                     'keyHandle': this.keyhandle,
@@ -90,6 +91,7 @@ class Plugin(ActionPlugin):
                     #'appId': APP_ID,
                     }
             u2f_tokens.append(data)
+            appid = this.app_id
             # Transform data to FIDO2
             credential_id = websafe_decode(this.keyhandle)
             cose_pubkey = fido2.cose.ES256.from_ctap1(websafe_decode(this.public_key))
@@ -108,6 +110,8 @@ class Plugin(ActionPlugin):
         fido2rp = RelyingParty(current_app.config['FIDO2_RP_ID'], 'eduID')
         fido2server = Fido2Server(fido2rp)
         fido2data = fido2server.authenticate_begin(fido2_credentials)
+        if appid:
+            fido2data['extensions'] = {'appid': appid}
         # Base64 encode binary data so the fido2data can be JSON encoded
         fido2data['publicKey']['challenge'] = base64.b64encode(fido2data['publicKey']['challenge'])
         for v in fido2data['publicKey']['allowCredentials']:
