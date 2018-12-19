@@ -99,11 +99,12 @@ class Plugin(ActionPlugin):
             acd = AttestedCredentialData(aaguid + c_len + credential_id + pk_cbor)
             fido2_credentials.append(acd)
 
-
+        # CTAP1/U2F
         current_app.logger.debug('U2F tokens for user {}:\n{}'.format(user, pprint.pformat(u2f_tokens)))
-
         challenge = begin_authentication(current_app.config['U2F_APP_ID'], u2f_tokens)
+        current_app.logger.debug('U2F challenge:\n{}'.format(pprint.pformat(challenge)))
 
+        # CTAP2/Webauthn
         fido2rp = RelyingParty(current_app.config['FIDO2_RP_ID'], 'eduID')
         fido2server = Fido2Server(fido2rp)
         fido2data = fido2server.authenticate_begin(fido2_credentials)
@@ -112,7 +113,7 @@ class Plugin(ActionPlugin):
         for v in fido2data['publicKey']['allowCredentials']:
             v['id'] = base64.b64encode(v['id'])
         current_app.logger.debug('FIDO2 credentials for user {}:\n{}'.format(user, pprint.pformat(fido2_credentials)))
-        current_app.logger.debug('FIDO2 data after b64-encoding: {}'.format(pprint.pformat(fido2data)))
+        current_app.logger.debug('FIDO2 data after b64-encoding:\n{}'.format(pprint.pformat(fido2data)))
 
         # Save the challenge to be used when validating the signature in perform_action() below
         session[self.PACKAGE_NAME + '.u2f.challenge'] = challenge.json
