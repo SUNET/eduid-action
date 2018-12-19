@@ -91,8 +91,8 @@ class Plugin(ActionPlugin):
                     #'appId': APP_ID,
                     }
             u2f_tokens.append(data)
+            # Transform data to Webauthn
             appid = this.app_id
-            # Transform data to FIDO2
             credential_id = websafe_decode(this.keyhandle)
             cose_pubkey = fido2.cose.ES256.from_ctap1(websafe_decode(this.public_key))
             aaguid = b'\0' * 16
@@ -143,12 +143,14 @@ class Plugin(ActionPlugin):
                    }
         token_response = request.get_json().get('tokenResponse', '')
         if not token_response:
+            current_app.logger.error('No tokenResponse in request')
+            current_app.logger.debug('Request: {}'.format(request.get_json()))
             raise self.ActionError('mfa.no-token-response')
 
         current_app.logger.debug('U2F token response: {}'.format(token_response))
 
         challenge = session.get(self.PACKAGE_NAME + '.u2f.challenge')
-        current_app.logger.debug("Challenge: {!r}".format(challenge))
+        current_app.logger.debug('Challenge: {!r}'.format(challenge))
 
         device, counter, touch = complete_authentication(challenge,
                 token_response, current_app.config['U2F_VALID_FACETS'])
