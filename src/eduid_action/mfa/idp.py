@@ -105,7 +105,7 @@ def check_authn_result(idp_app, user, ticket, actions):
                 kh = this.result.get('key_handle')
                 found = False
                 for cred in user.credentials.filter(U2F).to_list():
-                    if cred.keyhandle == kh:
+                    if cred.keyhandle == kh or cred.key == kh:
                         found = True
                         utc_now = datetime.datetime.utcnow().replace(tzinfo = None)  # thanks for not having timezone.utc, Python2
                         ticket.mfa_action_creds[cred] = utc_now

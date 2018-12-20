@@ -256,3 +256,50 @@ class MFAActionPluginTests(ActionsTestCase):
                             MockTicket('mock-session'))
                     self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn,
                         'mock-session')), 0)
+
+    @patch('eduid_action.mfa.action.complete_authentication')
+    def test_action_webauthn_legacy_token(self, mock_complete_authn):
+        #mock_complete_authn.return_value = ({'keyHandle': 'test_key_handle'},
+        #        'dummy-touch', 'dummy-counter')
+        #
+        # Add a working U2F credential for this test
+        u2f = U2F(version='U2F_V2',
+                  keyhandle='V1vXqZcwBJD2RMIH2udd2F7R9NoSNlP7ZSPOtKHzS7n_rHFXcXbSpOoX__aUKyTR6jEC8Xv678WjXC5KEkvziA',
+                  public_key='BHVTWuo3_D7ruRBe2Tw-m2atT2IOm_qQWSDreWShu3t21ne9c-DPSUdym-H-t7FcjV7rj1dSc3WSwaOJpFmkKxQ',
+                  app_id='https://dev.eduid.se/u2f-app-id.json',
+                  attest_cert='',
+                  description='unit test U2F token'
+                  )
+        self.user.credentials.add(u2f)
+        self.app.central_userdb.save(self.user, check_sync=False)
+
+        with self.session_cookie(self.browser) as client:
+            with client.session_transaction() as sess:
+                self.prepare(sess, Plugin, 'mfa', action_dict=MFA_ACTION)
+                with self.app.test_request_context():
+                    csrf_token = sess.get_csrf_token()
+                    data = json.dumps({'csrf_token': csrf_token,
+                                       'authenticatorData': 'mZ9k6EPHoJxJZNA+UuvM0JVoutZHmqelg9kXe/DSefgBAAAA/w==',
+                                       'clientDataJSON': 'eyJjaGFsbGVuZ2UiOiIzaF9FQVpwWTI1eERkU0pDT014MUFCWkVBNU9k'+\
+                                       'ejN5ZWpVSTNBVU5UUVdjIiwib3JpZ2luIjoiaHR0cHM6Ly9pZHAuZGV2LmVkdWlkLnNlIiwidH'+\
+                                       'lwZSI6IndlYmF1dGhuLmdldCJ9',
+                                       'credentialId': 'V1vXqZcwBJD2RMIH2udd2F7R9NoSNlP7ZSPOtKHzS7n/rHFXcXbSpOoX//'+\
+                                                       'aUKyTR6jEC8Xv678WjXC5KEkvziA==',
+                                       'signature': 'MEYCIQC5gM8inamJGUFKu3bNo4fT0jmJQuw33OSSXc242NCuiwIhAIWnVw2Sp'+\
+                                                    'ow72j6J92KaY2rLR6qSXEbLam09ZXbSkBnQ'}
+                                      )
+                    sess['eduid_action.mfa.webauthn.challenge'] = '3h/EAZpY25xDdSJCOMx1ABZEA5Odz3yejUI3AUNTQWc='
+                    #self.app.config['FIDO2_RP_ID'] = 'idp.dev.eduid.se'
+                    #self.app.config['FIDO2_RP_ID'] = 'https://dev.eduid.se/u2f-app-id.json'
+                    response = client.post('/post-action', data=data,
+                            content_type=self.content_type_json)
+                    self.assertEquals(response.status_code, 200)
+                    data = json.loads(response.data)
+                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn,
+                        'mock-session')), 1)
+                    mock_idp_app = MockIdPApp(self.app.actions_db)
+                    mock_idp_app.logger = self.app.logger
+                    add_actions(mock_idp_app, self.user,
+                            MockTicket('mock-session'))
+                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn,
+                        'mock-session')), 0)

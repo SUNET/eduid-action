@@ -56,6 +56,7 @@ class MockIdPApp:
     class Logger:
         debug = MagicMock()
         warning = MagicMock()
+        error = MagicMock()
 
     def __init__(self, actions_db, **kwargs):
         self.config = self.Config(**kwargs)
