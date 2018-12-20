@@ -83,7 +83,7 @@ class Plugin(ActionPlugin):
         if not user:
             raise self.ActionError('mfa.user-not-found')
 
-        appid, credentials = _get_user_credentials(user)
+        credentials = _get_user_credentials(user)
         u2f_tokens = [v['u2f'] for v in credentials.values()]
         webauthn_credentials = [v['webauthn'] for v in credentials.values()]
 
@@ -182,8 +182,7 @@ class Plugin(ActionPlugin):
             client_data = ClientData(req['clientDataJSON'])
             auth_data = AuthenticatorData(req['authenticatorData'])
 
-            appid, credentials = _get_user_credentials(user)
-            webauthn_credentials = [v['webauthn'] for v in credentials.values()]
+            credentials = _get_user_credentials(user)
             challenge = base64.b64decode(session[self.PACKAGE_NAME + '.webauthn.challenge'])
 
             rp_id = current_app.config['FIDO2_RP_ID']
@@ -196,33 +195,52 @@ class Plugin(ActionPlugin):
                     good += [appid]
                 return origin in good
 
-            # XXX this won't work if a user has a mix of CTAP1/CTAP2 credentials!
+            # To be able to figure out if we need to use the app_id (credential created as U2F) or not
+            # (credential created as Webauthn) we need to locate the credential that was (probably) used
+            # before verifying it
+            appid = None
+            cred_key = None
+            webauthn_cred = None
+            for k, v in credentials.items():
+                if v['webauthn'].credential_id == req['credentialId']:
+                    webauthn_cred = v['webauthn']
+                    appid = v['app_id']
+                    cred_key = k
+                    break
+            if not webauthn_cred:
+                current_app.logger.error('Could not find webauthn credential {} on user {}'.format(
+                    req['credentialId'], user))
+                raise self.ActionError('mfa.unknown-token')
             fido2rp = RelyingParty(appid if appid else rp_id, 'eduID')
             fido2server = Fido2Server(fido2rp, verify_origin=eduid_origin)
-            cred = fido2server.authenticate_complete(
-                webauthn_credentials,
+            authn_cred = fido2server.authenticate_complete(
+                [webauthn_cred],
                 req['credentialId'],
                 challenge,
                 client_data,
                 auth_data,
                 req['signature'],
             )
-            current_app.logger.debug('Authenticated Webauthn credential: {}'.format(cred))
-            for cred_key, v in credentials.items():
-                touch = auth_data.flags
-                counter = auth_data.counter
-                if v['webauthn'].credential_id == cred.credential_id:
-                    current_app.logger.info('User {} logged in using Webauthn token {} (touch: {}, counter {})'.format(
-                        user, cred_key, touch, counter))
-                    action.result = {'success': True,
-                                     'touch': auth_data.is_user_present() or auth_data.is_user_verified(),
-                                     'user_present': auth_data.is_user_present(),
-                                     'user_verified': auth_data.is_user_verified(),
-                                     'counter': counter,
-                                     'key_handle': cred_key,
-                                     }
-                    current_app.actions_db.update_action(action)
-                    return action.result
+            current_app.logger.debug('Authenticated Webauthn credential: {}'.format(authn_cred))
+            if authn_cred != webauthn_cred:
+                # this really should never happen - likely means return data of authenticate_complete() has changed
+                current_app.logger.error('Authenticated webauthn credential does not match candidate')
+                raise self.ActionError('mfa.unknown-token')
+
+            touch = auth_data.flags
+            counter = auth_data.counter
+            current_app.logger.info('User {} logged in using Webauthn token {} (touch: {}, counter {})'.format(
+                user, cred_key, touch, counter))
+            action.result = {'success': True,
+                             'touch': auth_data.is_user_present() or auth_data.is_user_verified(),
+                             'user_present': auth_data.is_user_present(),
+                             'user_verified': auth_data.is_user_verified(),
+                             'counter': counter,
+                             'key': cred_key,
+                             'key_handle': user.credentials.find(cred_key).keyhandle,
+                             }
+            current_app.actions_db.update_action(action)
+            return action.result
 
         else:
             current_app.logger.error('Neither U2F nor Webauthn data in request')
@@ -234,7 +252,6 @@ class Plugin(ActionPlugin):
 
 def _get_user_credentials(user):
     res = {}
-    appid = None
     for this in user.credentials.filter(U2F).to_list():
         data = {'version': this.version,
                 'keyHandle': this.keyhandle,
@@ -242,7 +259,6 @@ def _get_user_credentials(user):
                 # 'appId': APP_ID,
                 }
         # Transform data to Webauthn
-        appid = this.app_id
         credential_id = websafe_decode(this.keyhandle)
         cose_pubkey = fido2.cose.ES256.from_ctap1(websafe_decode(this.public_key))
         aaguid = b'\0' * 16
@@ -251,5 +267,9 @@ def _get_user_credentials(user):
         acd = AttestedCredentialData(aaguid + c_len + credential_id + pk_cbor)
         res[this.key] = {'u2f': data,
                          'webauthn': acd,
+                         'app_id': None,
                          }
-    return appid, res
+        # For credentials created using CTAP1/U2F, app_id is required to verify the signatures
+        if this.app_id:
+            res[this.key]['app_id'] = this.app_id
+    return res
