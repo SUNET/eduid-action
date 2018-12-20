@@ -237,20 +237,16 @@ def _get_user_credentials(user):
                 'publicKey': this.public_key,
                 # 'appId': APP_ID,
                 }
+
         # Transform data to Webauthn
-        credential_id = websafe_decode(this.keyhandle)
-        cose_pubkey = fido2.cose.ES256.from_ctap1(websafe_decode(this.public_key))
-        aaguid = b'\0' * 16
-        c_len = struct.pack('>H', len(credential_id))
-        pk_cbor = fido2.ctap2.cbor.dump_dict(cose_pubkey)
-        acd = AttestedCredentialData(aaguid + c_len + credential_id + pk_cbor)
+        acd = AttestedCredentialData.from_ctap1(websafe_decode(this.keyhandle),
+                                                websafe_decode(this.public_key))
         res[this.key] = {'u2f': data,
                          'webauthn': acd,
                          'app_id': None,
                          }
         # For credentials created using CTAP1/U2F, app_id is required to verify the signatures
-        if this.app_id:
-            res[this.key]['app_id'] = this.app_id
+        res[this.key]['app_id'] = this.app_id
     return res
 
 def _get_fido2server(credentials, fido2rp):
