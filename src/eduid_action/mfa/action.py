@@ -33,22 +33,19 @@
 import json
 import pprint
 import base64
-import struct
 from flask import current_app, request, session
 
 from eduid_action.common.action_abc import ActionPlugin
 from eduid_userdb.credentials import U2F
 
 from u2flib_server.u2f import begin_authentication, complete_authentication
-from u2flib_server.utils import websafe_decode
 
-import fido2
 from fido2.server import RelyingParty, Fido2Server, U2FFido2Server
 from fido2.client import ClientData
 from fido2.ctap2 import AttestedCredentialData, AuthenticatorData
-from fido2.cose import ES256
+from fido2.utils import websafe_decode
 
-# XXX should these be on current_app maybe?
+from . import RESULT_CREDENTIAL_KEY_NAME
 
 
 __author__ = 'ft'
@@ -93,20 +90,20 @@ class Plugin(ActionPlugin):
         current_app.logger.debug('U2F challenge:\n{}'.format(pprint.pformat(challenge)))
 
         # CTAP2/Webauthn
+        current_app.logger.debug('Webauthn credentials for user {}:\n{}'.format(
+            user, pprint.pformat(webauthn_credentials)))
         fido2rp = RelyingParty(current_app.config['FIDO2_RP_ID'], 'eduID')
         fido2server = _get_fido2server(credentials, fido2rp)
         fido2data, fido2state = fido2server.authenticate_begin(webauthn_credentials)
+        current_app.logger.debug('FIDO2 authentication data:\n{}'.format(pprint.pformat(fido2data)))
         # Base64 encode binary data so the fido2data can be JSON encoded
-        fido2data['publicKey']['challenge'] = base64.b64encode(fido2data['publicKey']['challenge'])
+        fido2data['publicKey']['challenge'] = base64.b64encode(fido2data['publicKey']['challenge']).decode('utf-8')
         for v in fido2data['publicKey']['allowCredentials']:
-            v['id'] = base64.b64encode(v['id'])
-        current_app.logger.debug('Webauthn credentials for user {}:\n{}'.format(
-            user, pprint.pformat(webauthn_credentials)))
+            v['id'] = base64.b64encode(v['id']).decode('utf-8')
         current_app.logger.debug('Webauthn data after b64-encoding:\n{}'.format(pprint.pformat(fido2data)))
 
         # Save the challenge to be used when validating the signature in perform_action() below
         session[self.PACKAGE_NAME + '.u2f.challenge'] = challenge.json
-        fido2state['challenge'] = base64.b64encode(fido2state['challenge'])
         session[self.PACKAGE_NAME + '.webauthn.state'] = json.dumps(fido2state)
 
         current_app.logger.debug('U2F challenge for user {}: {}'.format(user, challenge.data_for_client))
@@ -162,7 +159,7 @@ class Plugin(ActionPlugin):
                     action.result = {'success': True,
                                      'touch': touch,
                                      'counter': counter,
-                                     'key_handle': this.keyhandle,
+                                     RESULT_CREDENTIAL_KEY_NAME: this.key,
                                      }
                     current_app.actions_db.update_action(action)
                     return action.result
@@ -176,13 +173,12 @@ class Plugin(ActionPlugin):
                     current_app.logger.error('Failed to find/b64decode Webauthn parameter {}: {}'.format(
                         this, req_json.get(this)))
                     raise self.ActionError('mfa.bad-token-response')  # XXX add bad-token-response to frontend
-            #current_app.logger.debug('Webauthn request:\n{}'.format(pprint.pformat(req)))
+            current_app.logger.debug('Webauthn request after decoding:\n{}'.format(pprint.pformat(req)))
             client_data = ClientData(req['clientDataJSON'])
             auth_data = AuthenticatorData(req['authenticatorData'])
 
             credentials = _get_user_credentials(user)
             fido2state = json.loads(session[self.PACKAGE_NAME + '.webauthn.state'])
-            fido2state['challenge'] = base64.b64decode(fido2state['challenge'])
 
             rp_id = current_app.config['FIDO2_RP_ID']
             fido2rp = RelyingParty(rp_id, 'eduID')
@@ -215,8 +211,7 @@ class Plugin(ActionPlugin):
                              'user_present': auth_data.is_user_present(),
                              'user_verified': auth_data.is_user_verified(),
                              'counter': counter,
-                             'key': cred_key,
-                             'key_handle': user.credentials.find(cred_key).keyhandle,
+                             RESULT_CREDENTIAL_KEY_NAME: cred_key,
                              }
             current_app.actions_db.update_action(action)
             return action.result

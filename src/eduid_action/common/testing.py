@@ -58,10 +58,15 @@ class MockIdPApp:
         warning = MagicMock()
         error = MagicMock()
 
+    class Authn:
+        def log_authn(self, user, success, failure):
+            pass
+
     def __init__(self, actions_db, **kwargs):
         self.config = self.Config(**kwargs)
         self.logger = self.Logger()
         self.actions_db = actions_db
+        self.authn = self.Authn()
 
 
 class TestingActionPlugin(ActionPlugin):
