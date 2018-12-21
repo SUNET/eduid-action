@@ -112,8 +112,8 @@ class Plugin(ActionPlugin):
 
         # Save the challenge to be used when validating the signature in perform_action() below
         session[self.PACKAGE_NAME + '.u2f.challenge'] = challenge.json
-        session[self.PACKAGE_NAME + '.webauthn.challenge'] = fido2data['publicKey']['challenge']
-        session[self.PACKAGE_NAME + '.webauthn.data'] = json.dumps(fido2data)
+        webauthn_challenge = base64.b64encode(fido2data['publicKey']['challenge']).decode('utf-8')
+        session[self.PACKAGE_NAME + '.webauthn.challenge'] = webauthn_challenge
 
         current_app.logger.debug('U2F challenge for user {}: {}'.format(user, challenge.data_for_client))
 
