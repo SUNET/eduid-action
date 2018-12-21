@@ -92,22 +92,24 @@ class Plugin(ActionPlugin):
         current_app.logger.debug('U2F challenge:\n{}'.format(pprint.pformat(challenge)))
 
         # CTAP2/Webauthn
+        current_app.logger.debug('Webauthn credentials for user {}:\n{}'.format(
+            user, pprint.pformat(webauthn_credentials)))
         fido2rp = RelyingParty(current_app.config['FIDO2_RP_ID'], 'eduID')
         fido2server = Fido2Server(fido2rp)
         fido2data = fido2server.authenticate_begin(webauthn_credentials)
+        current_app.logger.debug('FIDO2 authentication data:\n{!}'.format(pprint.pformat(fido2data)))
         appid = None
         for this in credentials.values():
             if this.get('app_id'):
                 appid = this['app_id']
                 break
         if appid:
+            current_app.logger.debug('Requesting FIDO2 appid extension: {!r}'.format(appid))
             fido2data['publicKey']['extensions'] = {'appid': appid}
         # Base64 encode binary data so the fido2data can be JSON encoded
         fido2data['publicKey']['challenge'] = base64.b64encode(fido2data['publicKey']['challenge']).decode('utf-8')
         for v in fido2data['publicKey']['allowCredentials']:
             v['id'] = base64.b64encode(v['id']).decode('utf-8')
-        current_app.logger.debug('Webauthn credentials for user {}:\n{}'.format(
-            user, pprint.pformat(webauthn_credentials)))
         current_app.logger.debug('Webauthn data after b64-encoding:\n{}'.format(pprint.pformat(fido2data)))
 
         # Save the challenge to be used when validating the signature in perform_action() below
