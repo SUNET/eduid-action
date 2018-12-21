@@ -32,6 +32,7 @@
 #
 
 import json
+import base64
 from bson import ObjectId
 from mock import patch
 from eduid_userdb.credentials import U2F
@@ -66,7 +67,7 @@ class MFAActionPluginTests(ActionsTestCase):
     def setUp(self):
         super(MFAActionPluginTests, self).setUp()
         u2f = U2F(version='U2F_V2',
-                  app_id='test_app_id',
+                  app_id='https://dev.eduid.se/u2f-app-id.json',
                   keyhandle='test_key_handle',
                   public_key='test_public_key',
                   attest_cert='test_attest_cert',
@@ -287,11 +288,11 @@ class MFAActionPluginTests(ActionsTestCase):
                                        'signature': 'MEYCIQC5gM8inamJGUFKu3bNo4fT0jmJQuw33OSSXc242NCuiwIhAIWnVw2Sp'+\
                                                     'ow72j6J92KaY2rLR6qSXEbLam09ZXbSkBnQ'}
                                       )
-                    fido2_state = Fido2Server._make_internal_state('3h/EAZpY25xDdSJCOMx1ABZEA5Odz3yejUI3AUNTQWc=',
-                                                                   'preferred')
+                    fido2_state = Fido2Server._make_internal_state(
+                        base64.b64decode('3h/EAZpY25xDdSJCOMx1ABZEA5Odz3yejUI3AUNTQWc='), 'preferred')
                     sess['eduid_action.mfa.webauthn.state'] = json.dumps(fido2_state)
 
-                    #self.app.config['FIDO2_RP_ID'] = 'idp.dev.eduid.se'
+                    self.app.config['FIDO2_RP_ID'] = 'idp.dev.eduid.se'
                     #self.app.config['FIDO2_RP_ID'] = 'https://dev.eduid.se/u2f-app-id.json'
                     response = client.post('/post-action', data=data,
                             content_type=self.content_type_json)
