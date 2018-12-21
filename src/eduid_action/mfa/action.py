@@ -103,17 +103,16 @@ class Plugin(ActionPlugin):
         if appid:
             fido2data['publicKey']['extensions'] = {'appid': appid}
         # Base64 encode binary data so the fido2data can be JSON encoded
-        fido2data['publicKey']['challenge'] = base64.b64encode(fido2data['publicKey']['challenge'])
+        fido2data['publicKey']['challenge'] = base64.b64encode(fido2data['publicKey']['challenge']).decode('utf-8')
         for v in fido2data['publicKey']['allowCredentials']:
-            v['id'] = base64.b64encode(v['id'])
+            v['id'] = base64.b64encode(v['id']).decode('utf-8')
         current_app.logger.debug('Webauthn credentials for user {}:\n{}'.format(
             user, pprint.pformat(webauthn_credentials)))
         current_app.logger.debug('Webauthn data after b64-encoding:\n{}'.format(pprint.pformat(fido2data)))
 
         # Save the challenge to be used when validating the signature in perform_action() below
         session[self.PACKAGE_NAME + '.u2f.challenge'] = challenge.json
-        webauthn_challenge = base64.b64encode(fido2data['publicKey']['challenge']).decode('utf-8')
-        session[self.PACKAGE_NAME + '.webauthn.challenge'] = webauthn_challenge
+        session[self.PACKAGE_NAME + '.webauthn.challenge'] = fido2data['publicKey']['challenge']
 
         current_app.logger.debug('U2F challenge for user {}: {}'.format(user, challenge.data_for_client))
 
@@ -182,12 +181,13 @@ class Plugin(ActionPlugin):
                     current_app.logger.error('Failed to find/b64decode Webauthn parameter {}: {}'.format(
                         this, req_json.get(this)))
                     raise self.ActionError('mfa.bad-token-response')  # XXX add bad-token-response to frontend
-            #current_app.logger.debug('Webauthn request:\n{}'.format(pprint.pformat(req)))
+            current_app.logger.debug('Webauthn request after decoding:\n{}'.format(pprint.pformat(req)))
             client_data = ClientData(req['clientDataJSON'])
             auth_data = AuthenticatorData(req['authenticatorData'])
 
             credentials = _get_user_credentials(user)
             challenge = base64.b64decode(session[self.PACKAGE_NAME + '.webauthn.challenge'])
+            current_app.logger.debug('Webauthn challenge: {!r}'.format(challenge))
 
             rp_id = current_app.config['FIDO2_RP_ID']
             def eduid_origin(origin):
