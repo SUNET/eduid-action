@@ -97,7 +97,7 @@ class Plugin(ActionPlugin):
         fido2rp = RelyingParty(current_app.config['FIDO2_RP_ID'], 'eduID')
         fido2server = Fido2Server(fido2rp)
         fido2data = fido2server.authenticate_begin(webauthn_credentials)
-        current_app.logger.debug('FIDO2 authentication data:\n{!}'.format(pprint.pformat(fido2data)))
+        current_app.logger.debug('FIDO2 authentication data:\n{}'.format(pprint.pformat(fido2data)))
         appid = None
         for this in credentials.values():
             if this.get('app_id'):
