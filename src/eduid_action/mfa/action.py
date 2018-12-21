@@ -40,15 +40,14 @@ from eduid_action.common.action_abc import ActionPlugin
 from eduid_userdb.credentials import U2F
 
 from u2flib_server.u2f import begin_authentication, complete_authentication
-from u2flib_server.utils import websafe_decode
 
 import fido2
 from fido2.server import RelyingParty, Fido2Server
 from fido2.client import ClientData
 from fido2.ctap2 import AttestedCredentialData, AuthenticatorData
-from fido2.cose import ES256
+from fido2.utils import websafe_decode
 
-# XXX should these be on current_app maybe?
+from . import RESULT_CREDENTIAL_KEY_NAME
 
 
 __author__ = 'ft'
@@ -96,6 +95,11 @@ class Plugin(ActionPlugin):
         fido2rp = RelyingParty(current_app.config['FIDO2_RP_ID'], 'eduID')
         fido2server = Fido2Server(fido2rp)
         fido2data = fido2server.authenticate_begin(webauthn_credentials)
+        appid = None
+        for this in credentials.values():
+            if this.get('app_id'):
+                appid = this['app_id']
+                break
         if appid:
             fido2data['publicKey']['extensions'] = {'appid': appid}
         # Base64 encode binary data so the fido2data can be JSON encoded
@@ -164,7 +168,7 @@ class Plugin(ActionPlugin):
                     action.result = {'success': True,
                                      'touch': touch,
                                      'counter': counter,
-                                     'key_handle': this.keyhandle,
+                                     RESULT_CREDENTIAL_KEY_NAME: this.key,
                                      }
                     current_app.actions_db.update_action(action)
                     return action.result
@@ -236,8 +240,7 @@ class Plugin(ActionPlugin):
                              'user_present': auth_data.is_user_present(),
                              'user_verified': auth_data.is_user_verified(),
                              'counter': counter,
-                             'key': cred_key,
-                             'key_handle': user.credentials.find(cred_key).keyhandle,
+                             RESULT_CREDENTIAL_KEY_NAME: cred_key,
                              }
             current_app.actions_db.update_action(action)
             return action.result
