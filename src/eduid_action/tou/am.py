@@ -84,13 +84,13 @@ def attribute_fetcher(context, user_id):
     if user is None:
         raise UserDoesNotExist("No user matching _id='%s'" % user_id)
 
-    user_dict = user.to_dict(old_userdb_format=True)
+    tous = user.tou.to_list_of_dicts()
 
     import pprint
-    logger.debug("Processing user {!r}:\n{!s}".format(user_id,
-        pprint.pformat(user_dict)))
+    logger.debug("Processing user {}:\nToUs: {!r}".format(user,
+        pprint.pformat(tous)))
 
-    attributes = {'$set': {'tou': user_dict['tou']}}
+    attributes = {'$set': {'tou': tous}}
 
     try:
         context.tou_userdb.remove_user_by_id(user_id)
