@@ -29,8 +29,8 @@
 # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
+from __future__ import absolute_import
 
-import json
 import time
 from hashlib import sha256
 from copy import deepcopy
@@ -109,27 +109,20 @@ TEST_CONFIG = {
     'DEVELOPMENT': 'DEBUG',
     'APPLICATION_ROOT': '/',
     'LOG_LEVEL': 'DEBUG',
-    'AM_BROKER_URL': 'amqp://eduid:eduid_pw@rabbitmq/am',
-    'MSG_BROKER_URL': 'amqp://eduid:eduid_pw@rabbitmq/msg',
     'TOKEN_LOGIN_SHARED_KEY': 'shared_secret_Eifool0ua0eiph7ooc',
-    'CELERY_CONFIG': {
-        'CELERY_RESULT_BACKEND': 'amqp',
-        'CELERY_TASK_SERIALIZER': 'json',
-    },
     'IDP_URL': 'https://example.com/idp',
     'INTERNAL_SIGNUP_URL': 'https://example.com/signup',
     'PRESERVE_CONTEXT_ON_EXCEPTION': False,
     'BUNDLES_URL': 'http://example.com/bundles/',
     'DEBUG': False,
     'DEVEL_MODE': True,
-    'ACTION_PLUGINS': []
 }
 
 
 class ActionsTestCase(EduidAPITestCase):
 
-    def setUp(self):
-        super(ActionsTestCase, self).setUp()
+    def setUp(self, init_am=True):
+        super(ActionsTestCase, self).setUp(init_am=init_am)
         user_data = deepcopy(MOCKED_USER_STANDARD)
         user_data['modified_ts'] = datetime.utcnow()
         self.user = User(data=user_data)
@@ -143,14 +136,14 @@ class ActionsTestCase(EduidAPITestCase):
 
     def load_app(self, config):
         """
-        Called from the parent class, so we can provide the appropiate flask
+        Called from the parent class, so we can provide the appropriate flask
         app for this test case.
         """
         return actions_init_app('actions', config)
 
     def update_actions_config(self, config):
         '''
-        to be overriden by child classes, where they can provide additional
+        to be overridden by child classes, where they can provide additional
         settings specific for the particular plugins to be tested.
         '''
         return config
@@ -158,7 +151,6 @@ class ActionsTestCase(EduidAPITestCase):
     def update_config(self, config):
         more_config = self.update_actions_config(deepcopy(TEST_CONFIG))
         config.update(more_config)
-        config['CELERY_CONFIG']['MONGO_URI'] = config['MONGO_URI']
         return config
 
     def tearDown(self):

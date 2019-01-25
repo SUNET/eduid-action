@@ -30,7 +30,6 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 from abc import ABCMeta, abstractmethod
-import gettext
 from flask import current_app
 
 
@@ -79,7 +78,7 @@ class ActionError(Exception):
         self.remove_action = rm
 
 
-class ActionPlugin:
+class ActionPlugin(object):
     '''
     Abstract class to be extended by the different plugins for the
     actions app.

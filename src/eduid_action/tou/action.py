@@ -32,22 +32,27 @@
 
 __author__ = 'eperez'
 
-import json
 from bson import ObjectId
 from datetime import datetime
 
-from flask import current_app, request, abort
+from flask import current_app, request
 
 from eduid_action.common.action_abc import ActionPlugin
 from eduid_userdb.tou import ToUEvent
 from eduid_userdb.actions.tou import ToUUserDB, ToUUser
-from eduid_am.tasks import update_attributes_keep_result
 
 
 class Plugin(ActionPlugin):
 
     PACKAGE_NAME = 'eduid_action.tou'
     steps = 1
+
+    def __init__(self):
+        super(Plugin, self).__init__()
+
+        # This import has to happen _after_ eduid_am has been initialized
+        from eduid_am.tasks import update_attributes_keep_result
+        self._update_attributes = update_attributes_keep_result
 
     @classmethod
     def includeme(cls, app):
@@ -86,7 +91,7 @@ class Plugin(ActionPlugin):
             ))
         current_app.tou_db.save(user, check_sync=False)
         current_app.logger.debug("Asking for sync of {} by Attribute Manager".format(user))
-        rtask = update_attributes_keep_result.delay('tou', str(user.user_id))
+        rtask = self._update_attributes.delay('tou', str(user.user_id))
         try:
             result = rtask.get(timeout=10)
             current_app.logger.debug("Attribute Manager sync result: {!r}".format(result))
