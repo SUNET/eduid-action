@@ -38,8 +38,6 @@ import json
 from mock import patch
 from datetime import datetime
 from bson import ObjectId
-from copy import deepcopy
-from flask import Response
 from eduid_userdb.tou import ToUEvent
 from eduid_action.common.testing import MockIdPApp
 from eduid_action.common.testing import ActionsTestCase
@@ -136,16 +134,15 @@ class ToUActionPluginTests(ActionsTestCase):
                     data = json.loads(response.data)
                     self.assertEquals(data['payload']['message'], 'tou.no-tou')
 
-    @patch('eduid_action.tou.action.update_attributes_keep_result.delay')
-    def test_get_accept_tou(self, mock_update):
-        class RTask:
-            def get(self, *args, **kwargs):
-                return True
-        mock_update.return_value = RTask()
+    def test_get_accept_tou(self):
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
                 self.prepare(sess, Plugin, 'tou', action_dict=TOU_ACTION)
                 with self.app.test_request_context():
+                    # verify the user hasn't previously accepted the test version
+                    user = self.app.central_userdb.get_user_by_eppn(self.user.eppn)
+                    self.assertFalse(user.tou.has_accepted(TOU_ACTION['params']['version']))
+
                     csrf_token = sess.get_csrf_token()
                     data = json.dumps({'accept': True,
                                        'csrf_token': csrf_token})
@@ -154,13 +151,11 @@ class ToUActionPluginTests(ActionsTestCase):
                     self.assertEquals(response.status_code, 200)
                     data = json.loads(response.data)
                     self.assertEquals(data['payload']['message'], "actions.action-completed")
+                    # verify the tou is now accepted in the main database
+                    user = self.app.central_userdb.get_user_by_eppn(self.user.eppn)
+                    self.assertTrue(user.tou.has_accepted(TOU_ACTION['params']['version']))
 
-    @patch('eduid_action.tou.action.update_attributes_keep_result.delay')
-    def test_get_not_accept_tou(self, mock_update):
-        class RTask:
-            def get(self, *args, **kwargs):
-                return True
-        mock_update.return_value = RTask()
+    def test_get_not_accept_tou(self):
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
                 self.prepare(sess, Plugin, 'tou', action_dict=TOU_ACTION)
@@ -174,22 +169,3 @@ class ToUActionPluginTests(ActionsTestCase):
                     data = json.loads(response.data)
                     self.assertEquals(data['payload']['message'],
                             "tou.must-accept")
-
-    @patch('eduid_action.tou.action.update_attributes_keep_result.delay')
-    def test_get_accept_tou_raise(self, mock_update):
-        class RTask:
-            def get(self, *args, **kwargs):
-                raise Exception()
-        mock_update.return_value = RTask()
-        with self.session_cookie(self.browser) as client:
-            with client.session_transaction() as sess:
-                self.prepare(sess, Plugin, 'tou', action_dict=TOU_ACTION)
-                with self.app.test_request_context():
-                    csrf_token = sess.get_csrf_token()
-                    data = json.dumps({'accept': True,
-                                       'csrf_token': csrf_token})
-                    response = client.post('/post-action', data=data,
-                            content_type=self.content_type_json)
-                    self.assertEquals(response.status_code, 200)
-                    data = json.loads(response.data)
-                    self.assertEquals(data['payload']['message'], "tou.sync-problem")

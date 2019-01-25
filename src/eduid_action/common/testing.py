@@ -30,7 +30,6 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import json
 import time
 from hashlib import sha256
 from copy import deepcopy
@@ -112,10 +111,6 @@ TEST_CONFIG = {
     'AM_BROKER_URL': 'amqp://eduid:eduid_pw@rabbitmq/am',
     'MSG_BROKER_URL': 'amqp://eduid:eduid_pw@rabbitmq/msg',
     'TOKEN_LOGIN_SHARED_KEY': 'shared_secret_Eifool0ua0eiph7ooc',
-    'CELERY_CONFIG': {
-        'CELERY_RESULT_BACKEND': 'amqp',
-        'CELERY_TASK_SERIALIZER': 'json',
-    },
     'IDP_URL': 'https://example.com/idp',
     'INTERNAL_SIGNUP_URL': 'https://example.com/signup',
     'PRESERVE_CONTEXT_ON_EXCEPTION': False,
@@ -158,7 +153,6 @@ class ActionsTestCase(EduidAPITestCase):
     def update_config(self, config):
         more_config = self.update_actions_config(deepcopy(TEST_CONFIG))
         config.update(more_config)
-        config['CELERY_CONFIG']['MONGO_URI'] = config['MONGO_URI']
         return config
 
     def tearDown(self):
