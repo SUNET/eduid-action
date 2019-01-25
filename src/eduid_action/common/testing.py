@@ -108,8 +108,6 @@ TEST_CONFIG = {
     'DEVELOPMENT': 'DEBUG',
     'APPLICATION_ROOT': '/',
     'LOG_LEVEL': 'DEBUG',
-    'AM_BROKER_URL': 'amqp://eduid:eduid_pw@rabbitmq/am',
-    'MSG_BROKER_URL': 'amqp://eduid:eduid_pw@rabbitmq/msg',
     'TOKEN_LOGIN_SHARED_KEY': 'shared_secret_Eifool0ua0eiph7ooc',
     'IDP_URL': 'https://example.com/idp',
     'INTERNAL_SIGNUP_URL': 'https://example.com/signup',
@@ -117,7 +115,14 @@ TEST_CONFIG = {
     'BUNDLES_URL': 'http://example.com/bundles/',
     'DEBUG': False,
     'DEVEL_MODE': True,
-    'ACTION_PLUGINS': []
+    'ACTION_PLUGINS': [],
+    'CELERY_CONFIG': {'broker_transport': 'memory',
+                      'broker_url': 'memory://',
+                      'task_eager_propagates': True,
+                      'task_always_eager': True,
+                      'result_backend': 'cache',
+                      'cache_backend': 'memory',
+                      },
 }
 
 
