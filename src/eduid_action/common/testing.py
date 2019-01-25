@@ -143,14 +143,14 @@ class ActionsTestCase(EduidAPITestCase):
 
     def load_app(self, config):
         """
-        Called from the parent class, so we can provide the appropiate flask
+        Called from the parent class, so we can provide the appropriate flask
         app for this test case.
         """
         return actions_init_app('actions', config)
 
     def update_actions_config(self, config):
         '''
-        to be overriden by child classes, where they can provide additional
+        to be overridden by child classes, where they can provide additional
         settings specific for the particular plugins to be tested.
         '''
         return config
