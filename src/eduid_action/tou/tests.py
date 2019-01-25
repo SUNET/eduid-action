@@ -30,6 +30,7 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 #
+from __future__ import absolute_import
 
 __author__ = 'eperez'
 
@@ -68,7 +69,6 @@ class ToUActionPluginTests(ActionsTestCase):
 
     def update_actions_config(self, config):
         config['INTERNAL_SIGNUP_URL'] = 'http://example.com/signup'
-        config['ACTION_PLUGINS'].append('tou')
         return config
 
     def tou_accepted(self, version):

@@ -1,12 +1,12 @@
 from setuptools import setup
 
-version = '0.2.1b7'
+version = '0.2.1b8'
 
 requires = [
     'python-u2flib-server',
     'fido2 >= 0.5.0',
     'eduid-userdb>=0.4.0b12',
-    'eduid-common[webapp]>=0.3.5b9',
+    'eduid-common[webapp]>=0.3.8b2',
 ]
 
 idp_extras = [

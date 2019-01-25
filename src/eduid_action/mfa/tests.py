@@ -30,6 +30,7 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 #
+from __future__ import absolute_import
 
 import json
 import base64
@@ -78,7 +79,6 @@ class MFAActionPluginTests(ActionsTestCase):
 
     def update_actions_config(self, config):
         config['MFA_TESTING'] = False
-        config['ACTION_PLUGINS'].append('mfa')
         config['U2F_APP_ID'] = 'https://example.com'
         config['U2F_VALID_FACETS'] = [
             'https://dashboard.dev.eduid.se',

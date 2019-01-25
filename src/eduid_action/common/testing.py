@@ -29,6 +29,7 @@
 # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
+from __future__ import absolute_import
 
 import time
 from hashlib import sha256
@@ -115,21 +116,13 @@ TEST_CONFIG = {
     'BUNDLES_URL': 'http://example.com/bundles/',
     'DEBUG': False,
     'DEVEL_MODE': True,
-    'ACTION_PLUGINS': [],
-    'CELERY_CONFIG': {'broker_transport': 'memory',
-                      'broker_url': 'memory://',
-                      'task_eager_propagates': True,
-                      'task_always_eager': True,
-                      'result_backend': 'cache',
-                      'cache_backend': 'memory',
-                      },
 }
 
 
 class ActionsTestCase(EduidAPITestCase):
 
-    def setUp(self):
-        super(ActionsTestCase, self).setUp()
+    def setUp(self, init_am=True):
+        super(ActionsTestCase, self).setUp(init_am=init_am)
         user_data = deepcopy(MOCKED_USER_STANDARD)
         user_data['modified_ts'] = datetime.utcnow()
         self.user = User(data=user_data)
