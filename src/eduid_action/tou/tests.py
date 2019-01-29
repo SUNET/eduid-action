@@ -60,7 +60,8 @@ TOU_ACTION = {
 class ToUActionPluginTests(ActionsTestCase):
 
     def setUp(self):
-        super(ToUActionPluginTests, self).setUp()
+        am_settings = {'ACTION_PLUGINS': ['tou'], 'WANT_MONGO_URI': True}
+        super(ToUActionPluginTests, self).setUp(am_settings=am_settings)
         self.tou_db = self.app.tou_db
 
     def tearDown(self):
