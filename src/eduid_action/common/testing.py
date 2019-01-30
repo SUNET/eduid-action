@@ -122,7 +122,13 @@ TEST_CONFIG = {
 class ActionsTestCase(EduidAPITestCase):
 
     def setUp(self, init_am=True):
-        super(ActionsTestCase, self).setUp(init_am=init_am)
+        # Have to list all action plugins here, because the Celery worker instance is
+        # instantiated only once for all tests. Don't know how to unload the in-memory
+        # worker instance :/
+        am_settings = {'ACTION_PLUGINS': ['tou', 'mfa'],
+                       'WANT_MONGO_URI': True,
+                       }
+        super(ActionsTestCase, self).setUp(init_am=init_am, am_settings=am_settings)
         user_data = deepcopy(MOCKED_USER_STANDARD)
         user_data['modified_ts'] = datetime.utcnow()
         self.user = User(data=user_data)

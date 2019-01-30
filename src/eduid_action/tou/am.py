@@ -46,7 +46,9 @@ class ToUAMPContext(object):
     """
 
     def __init__(self, db_uri):
-        self.tou_userdb = ToUUserDB(db_uri)
+        self.tou_userdb = None
+        if db_uri is not None:
+            self.tou_userdb = ToUUserDB(db_uri)
 
 
 def plugin_init(am_conf):
