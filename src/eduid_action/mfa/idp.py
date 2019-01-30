@@ -33,7 +33,7 @@
 __author__ = 'ft'
 
 import datetime
-from eduid_userdb.credentials import U2F
+from eduid_userdb.credentials import U2F, Webauthn
 
 from . import RESULT_CREDENTIAL_KEY_NAME
 
@@ -57,8 +57,10 @@ def add_actions(idp_app, user, ticket):
     :return: None
     """
     u2f_tokens = user.credentials.filter(U2F).to_list()
-    if not u2f_tokens:
-        idp_app.logger.debug('User does not have any U2F tokens registered')
+    webauthn_tokens = user.credentials.filter(Webauthn).to_list()
+    tokens = u2f_tokens + webauthn_tokens
+    if not tokens:
+        idp_app.logger.debug('User does not have any U2F or Webauthn tokens registered')
         return None
 
     if not idp_app.actions_db:
@@ -76,7 +78,7 @@ def add_actions(idp_app, user, ticket):
             return
         idp_app.logger.error('User returned without MFA credentials')
 
-    idp_app.logger.debug('User must authenticate with U2F token (has {} token(s))'.format(len(u2f_tokens)))
+    idp_app.logger.debug('User must authenticate with a token (has {} token(s))'.format(len(tokens)))
     idp_app.actions_db.add_action(
         user.eppn,
         action_type = 'mfa',
@@ -107,7 +109,7 @@ def check_authn_result(idp_app, user, ticket, actions):
         idp_app.logger.debug('Action {} authn result: {}'.format(this, this.result))
         if this.result.get('success') is True:
             key = this.result.get(RESULT_CREDENTIAL_KEY_NAME)
-            cred = user.credentials.filter(U2F).find(key)
+            cred = user.credentials.find(key)
             if cred:
                 utc_now = datetime.datetime.utcnow().replace(tzinfo = None)  # thanks for not having timezone.utc, Python2
                 ticket.mfa_action_creds[cred] = utc_now

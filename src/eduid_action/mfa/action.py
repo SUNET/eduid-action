@@ -36,7 +36,7 @@ import base64
 from flask import current_app, request, session
 
 from eduid_action.common.action_abc import ActionPlugin
-from eduid_userdb.credentials import U2F
+from eduid_userdb.credentials import U2F, Webauthn
 
 from u2flib_server.u2f import begin_authentication, complete_authentication
 
@@ -86,8 +86,13 @@ class Plugin(ActionPlugin):
 
         # CTAP1/U2F
         current_app.logger.debug('U2F tokens for user {}:\n{}'.format(user, pprint.pformat(u2f_tokens)))
-        challenge = begin_authentication(current_app.config['U2F_APP_ID'], u2f_tokens)
-        current_app.logger.debug('U2F challenge:\n{}'.format(pprint.pformat(challenge)))
+        challenge = None
+        try:
+            challenge = begin_authentication(current_app.config['U2F_APP_ID'], u2f_tokens)
+            current_app.logger.debug('U2F challenge:\n{}'.format(pprint.pformat(challenge)))
+        except ValueError:
+            # there is no U2F key registered for this user
+            pass
 
         # CTAP2/Webauthn
         current_app.logger.debug('Webauthn credentials for user {}:\n{}'.format(
@@ -102,15 +107,16 @@ class Plugin(ActionPlugin):
             v['id'] = base64.b64encode(v['id']).decode('utf-8')
         current_app.logger.debug('Webauthn data after b64-encoding:\n{}'.format(pprint.pformat(fido2data)))
 
+        config = {'u2fdata': '', 'webauthn_options': fido2data,}
+
         # Save the challenge to be used when validating the signature in perform_action() below
-        session[self.PACKAGE_NAME + '.u2f.challenge'] = challenge.json
+        if challenge is not None:
+            session[self.PACKAGE_NAME + '.u2f.challenge'] = challenge.json
+            config['u2fdata'] = json.dumps(challenge.data_for_client)
+            current_app.logger.debug('U2F challenge for user {}: {}'.format(user, challenge.data_for_client))
+
         session[self.PACKAGE_NAME + '.webauthn.state'] = json.dumps(fido2state)
 
-        current_app.logger.debug('U2F challenge for user {}: {}'.format(user, challenge.data_for_client))
-
-        config = {'u2fdata': json.dumps(challenge.data_for_client),
-                  'webauthn_options': fido2data,
-                  }
         if current_app.config.get('MFA_TESTING', False) == True:
             current_app.logger.info('MFA test mode is enabled')
             config['testing'] = True
@@ -226,16 +232,24 @@ class Plugin(ActionPlugin):
 
 def _get_user_credentials(user):
     res = {}
-    for this in user.credentials.filter(U2F).to_list():
-        data = {'version': this.version,
-                'keyHandle': this.keyhandle,
-                'publicKey': this.public_key,
+    for this in user.credentials.filter(U2F).to_list() + user.credentials.filter(Webauthn).to_list():
+        keyhandle = this.keyhandle
+        public_key = this.public_key
+        version = hasattr(this, 'version') and this.version or 'webauthn'
+        if version != 'webauthn':
+            keyhandle = websafe_decode(this.keyhandle)
+            public_key = websafe_decode(this.public_key)
+        data = {'version': version,
+                'keyHandle': keyhandle,
+                'publicKey': public_key,
                 # 'appId': APP_ID,
                 }
 
         # Transform data to Webauthn
-        acd = AttestedCredentialData.from_ctap1(websafe_decode(this.keyhandle),
-                                                websafe_decode(this.public_key))
+        if version != 'webauthn':
+            acd = AttestedCredentialData.from_ctap1(keyhandle, public_key)
+        else:
+            acd = websafe_decode('ascii')
         res[this.key] = {'u2f': data,
                          'webauthn': acd,
                          'app_id': None,
