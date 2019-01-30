@@ -66,8 +66,7 @@ class MockTicket:
 class MFAActionPluginTests(ActionsTestCase):
 
     def setUp(self):
-        am_settings = {'ACTION_PLUGINS': ['mfa']}
-        super(MFAActionPluginTests, self).setUp(am_settings=am_settings)
+        super(MFAActionPluginTests, self).setUp()
         u2f = U2F(version='U2F_V2',
                   app_id='https://dev.eduid.se/u2f-app-id.json',
                   keyhandle='test_key_handle',
