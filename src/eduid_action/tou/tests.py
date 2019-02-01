@@ -36,6 +36,7 @@ __author__ = 'eperez'
 
 
 import json
+import unittest
 from mock import patch
 from datetime import datetime
 from bson import ObjectId
@@ -60,7 +61,7 @@ TOU_ACTION = {
 class ToUActionPluginTests(ActionsTestCase):
 
     def setUp(self):
-        super(ToUActionPluginTests, self).setUp()
+        super(ToUActionPluginTests, self).setUp(init_am=True, am_settings={'ACTION_PLUGINS': ['tou']})
         self.tou_db = self.app.tou_db
 
     def tearDown(self):
@@ -68,6 +69,7 @@ class ToUActionPluginTests(ActionsTestCase):
         super(ToUActionPluginTests, self).tearDown()
 
     def update_actions_config(self, config):
+        config['ACTION_PLUGINS'] = ['tou']
         config['INTERNAL_SIGNUP_URL'] = 'http://example.com/signup'
         return config
 
@@ -134,6 +136,7 @@ class ToUActionPluginTests(ActionsTestCase):
                     data = json.loads(response.data)
                     self.assertEquals(data['payload']['message'], 'tou.no-tou')
 
+    @unittest.skip("Fix when celery workers have proper de init or we have a singleton worker")
     def test_get_accept_tou(self):
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
