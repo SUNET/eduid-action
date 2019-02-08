@@ -82,7 +82,6 @@ class Plugin(ActionPlugin):
 
         credentials = _get_user_credentials(user)
         u2f_tokens = [v['u2f'] for v in credentials.values()]
-        webauthn_credentials = [v['webauthn'] for v in credentials.values()]
 
         # CTAP1/U2F
         current_app.logger.debug('U2F tokens for user {}:\n{}'.format(user, pprint.pformat(u2f_tokens)))
@@ -95,6 +94,7 @@ class Plugin(ActionPlugin):
             pass
 
         # CTAP2/Webauthn
+        webauthn_credentials = [v['webauthn'] for v in credentials.values()]
         current_app.logger.debug('Webauthn credentials for user {}:\n{}'.format(
             user, pprint.pformat(webauthn_credentials)))
         fido2rp = RelyingParty(current_app.config['FIDO2_RP_ID'], 'eduID')
@@ -102,10 +102,10 @@ class Plugin(ActionPlugin):
         fido2data, fido2state = fido2server.authenticate_begin(webauthn_credentials)
         current_app.logger.debug('FIDO2 authentication data:\n{}'.format(pprint.pformat(fido2data)))
         # Base64 encode binary data so the fido2data can be JSON encoded
-        fido2data['publicKey']['challenge'] = base64.b64encode(fido2data['publicKey']['challenge']).decode('utf-8')
-        for v in fido2data['publicKey']['allowCredentials']:
-            v['id'] = base64.b64encode(v['id']).decode('utf-8')
-        current_app.logger.debug('Webauthn data after b64-encoding:\n{}'.format(pprint.pformat(fido2data)))
+#        fido2data['publicKey']['challenge'] = base64.b64encode(fido2data['publicKey']['challenge']).decode('utf-8')
+#        for v in fido2data['publicKey']['allowCredentials']:
+#            v['id'] = base64.b64encode(v['id']).decode('utf-8')
+#        current_app.logger.debug('Webauthn data after b64-encoding:\n{}'.format(pprint.pformat(fido2data)))
 
         config = {'u2fdata': '', 'webauthn_options': fido2data,}
 
@@ -249,7 +249,9 @@ def _get_user_credentials(user):
         if version != 'webauthn':
             acd = AttestedCredentialData.from_ctap1(keyhandle, public_key)
         else:
-            acd = websafe_decode('ascii')
+            acd, rest = AttestedCredentialData.unpack_from(base64.b64decode(public_key.encode('ascii')))
+            if rest:
+                raise ValueError('Wrong authn data {!r}'.format(public_key))
         res[this.key] = {'u2f': data,
                          'webauthn': acd,
                          'app_id': None,
