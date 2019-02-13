@@ -78,6 +78,7 @@ class MFAActionPluginTests(ActionsTestCase):
         self.app.central_userdb.save(self.user, check_sync=False)
 
     def update_actions_config(self, config):
+        config['ACTION_PLUGINS'] = ['mfa']
         config['MFA_TESTING'] = False
         config['U2F_APP_ID'] = 'https://example.com'
         config['U2F_VALID_FACETS'] = [

@@ -115,14 +115,14 @@ TEST_CONFIG = {
     'PRESERVE_CONTEXT_ON_EXCEPTION': False,
     'BUNDLES_URL': 'http://example.com/bundles/',
     'DEBUG': False,
-    'DEVEL_MODE': True,
+    'DEVEL_MODE': True
 }
 
 
 class ActionsTestCase(EduidAPITestCase):
 
-    def setUp(self, init_am=True):
-        super(ActionsTestCase, self).setUp(init_am=init_am)
+    def setUp(self, init_am=True, am_settings=None):
+        super(ActionsTestCase, self).setUp(init_am=init_am, am_settings=am_settings)
         user_data = deepcopy(MOCKED_USER_STANDARD)
         user_data['modified_ts'] = datetime.utcnow()
         self.user = User(data=user_data)
@@ -142,10 +142,10 @@ class ActionsTestCase(EduidAPITestCase):
         return actions_init_app('actions', config)
 
     def update_actions_config(self, config):
-        '''
+        """
         to be overridden by child classes, where they can provide additional
         settings specific for the particular plugins to be tested.
-        '''
+        """
         return config
 
     def update_config(self, config):
