@@ -30,6 +30,8 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 #
+
+import struct
 import json
 import pprint
 import base64
@@ -40,6 +42,7 @@ from eduid_userdb.credentials import U2F, Webauthn
 
 from u2flib_server.u2f import begin_authentication, complete_authentication
 
+from fido2 import cbor
 from fido2.server import RelyingParty, Fido2Server, U2FFido2Server
 from fido2.client import ClientData
 from fido2.ctap2 import AttestedCredentialData, AuthenticatorData
@@ -98,14 +101,9 @@ class Plugin(ActionPlugin):
         current_app.logger.debug('Webauthn credentials for user {}:\n{}'.format(
             user, pprint.pformat(webauthn_credentials)))
         fido2rp = RelyingParty(current_app.config['FIDO2_RP_ID'], 'eduID')
-        fido2server = _get_fido2server(credentials, fido2rp)
+        fido2server = Fido2Server(fido2rp)
         fido2data, fido2state = fido2server.authenticate_begin(webauthn_credentials)
         current_app.logger.debug('FIDO2 authentication data:\n{}'.format(pprint.pformat(fido2data)))
-        # Base64 encode binary data so the fido2data can be JSON encoded
-#        fido2data['publicKey']['challenge'] = base64.b64encode(fido2data['publicKey']['challenge']).decode('utf-8')
-#        for v in fido2data['publicKey']['allowCredentials']:
-#            v['id'] = base64.b64encode(v['id']).decode('utf-8')
-#        current_app.logger.debug('Webauthn data after b64-encoding:\n{}'.format(pprint.pformat(fido2data)))
 
         config = {'u2fdata': '', 'webauthn_options': fido2data,}
 
@@ -188,12 +186,18 @@ class Plugin(ActionPlugin):
 
             rp_id = current_app.config['FIDO2_RP_ID']
             fido2rp = RelyingParty(rp_id, 'eduID')
-            fido2server = _get_fido2server(credentials, fido2rp)
-            matching_credentials = [v['webauthn'] for v in credentials.values() \
-                                    if v['webauthn'].credential_id == req['credentialId']]
+            fido2server = Fido2Server(fido2rp)
+            matching_credentials = [(AttestedCredentialData(v['webauthn']), k) for k,v in credentials.items()
+                      if AttestedCredentialData(v['webauthn']).credential_id == req['credentialId']]
+
+            if not matching_credentials:
+                current_app.logger.error('Could not find webauthn credential {} on user {}'.format(
+                    req['credentialId'], user))
+                raise self.ActionError('mfa.unknown-token')
+
             authn_cred = fido2server.authenticate_complete(
                 fido2state,
-                matching_credentials,
+                [mc[0] for mc in matching_credentials],
                 req['credentialId'],
                 client_data,
                 auth_data,
@@ -201,12 +205,7 @@ class Plugin(ActionPlugin):
             )
             current_app.logger.debug('Authenticated Webauthn credential: {}'.format(authn_cred))
 
-            cred_key = [k for k,v in credentials.items() if v['webauthn'].credential_id == req['credentialId']]
-            if not cred_key:
-                current_app.logger.error('Could not find webauthn credential {} on user {}'.format(
-                    req['credentialId'], user))
-                raise self.ActionError('mfa.unknown-token')
-            cred_key = cred_key[0]
+            cred_key = [mc[1] for mc in matching_credentials][0]
 
             touch = auth_data.flags
             counter = auth_data.counter
@@ -223,7 +222,7 @@ class Plugin(ActionPlugin):
             return action.result
 
         else:
-            current_app.logger.error('Neither U2F nor Webauthn data in request')
+            current_app.logger.error('Neither U2F nor Webauthn data in request to authn {}'.format(user))
             current_app.logger.debug('Request: {}'.format(req_json))
             raise self.ActionError('mfa.no-token-response')
 
@@ -232,43 +231,28 @@ class Plugin(ActionPlugin):
 
 def _get_user_credentials(user):
     res = {}
-    for this in user.credentials.filter(U2F).to_list() + user.credentials.filter(Webauthn).to_list():
-        keyhandle = this.keyhandle
-        public_key = this.public_key
-        version = hasattr(this, 'version') and this.version or 'webauthn'
-        if version != 'webauthn':
-            keyhandle = websafe_decode(this.keyhandle)
-            public_key = websafe_decode(this.public_key)
-        data = {'version': version,
-                'keyHandle': keyhandle,
-                'publicKey': public_key,
-                # 'appId': APP_ID,
-                }
-
-        # Transform data to Webauthn
-        if version != 'webauthn':
-            acd = AttestedCredentialData.from_ctap1(keyhandle, public_key)
-        else:
-            acd, rest = AttestedCredentialData.unpack_from(base64.b64decode(public_key.encode('ascii')))
-            if rest:
-                raise ValueError('Wrong authn data {!r}'.format(public_key))
-        res[this.key] = {'u2f': data,
+    for this in user.credentials.filter(U2F).to_list():
+        keyhandle = websafe_decode(this.keyhandle)
+        public_key = websafe_decode(this.public_key)
+        version = this.version
+        acd = AttestedCredentialData.from_ctap1(keyhandle, public_key)
+        res[this.key] = {'u2f': {'version': version,
+                                 'keyHandle': keyhandle,
+                                 'publicKey': public_key,
+                                 },
                          'webauthn': acd,
-                         'app_id': None,
+                         'app_id': this.app_id,
                          }
-        # For credentials created using CTAP1/U2F, app_id is required to verify the signatures
-        res[this.key]['app_id'] = this.app_id
+    for this in user.credentials.filter(Webauthn).to_list():
+        keyhandle = this.keyhandle
+        cred_data = base64.b64decode(this.credential_data.encode('ascii'))
+        credential_data, rest = AttestedCredentialData.unpack_from(cred_data)
+        version = 'webauthn'
+        res[this.key] = {'u2f': {'version': version,
+                                 'keyHandle': keyhandle,
+                                 'publicKey': str(credential_data.public_key),
+                                 },
+                         'webauthn': credential_data,
+                         'app_id': '',
+                         }
     return res
-
-def _get_fido2server(credentials, fido2rp):
-    # See if any of the credentials is a legacy U2F credential with an app-id
-    # (assume all app-ids are the same - authenticating with a mix of different
-    # app-ids isn't supported in current Webauthn)
-    app_id = None
-    for k, v in credentials.items():
-        if v['app_id']:
-            app_id = v['app_id']
-            break
-    if app_id:
-        return U2FFido2Server(app_id, fido2rp)
-    return Fido2Server(fido2rp)
