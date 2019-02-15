@@ -42,7 +42,6 @@ from eduid_userdb.credentials import U2F, Webauthn
 
 from u2flib_server.u2f import begin_authentication, complete_authentication
 
-from fido2 import cbor
 from fido2.server import RelyingParty, Fido2Server, U2FFido2Server
 from fido2.client import ClientData
 from fido2.ctap2 import AttestedCredentialData, AuthenticatorData
@@ -101,7 +100,7 @@ class Plugin(ActionPlugin):
         current_app.logger.debug('Webauthn credentials for user {}:\n{}'.format(
             user, pprint.pformat(webauthn_credentials)))
         fido2rp = RelyingParty(current_app.config['FIDO2_RP_ID'], 'eduID')
-        fido2server = Fido2Server(fido2rp)
+        fido2server = _get_fido2server(credentials, fido2rp)
         fido2data, fido2state = fido2server.authenticate_begin(webauthn_credentials)
         current_app.logger.debug('FIDO2 authentication data:\n{}'.format(pprint.pformat(fido2data)))
 
@@ -186,9 +185,9 @@ class Plugin(ActionPlugin):
 
             rp_id = current_app.config['FIDO2_RP_ID']
             fido2rp = RelyingParty(rp_id, 'eduID')
-            fido2server = Fido2Server(fido2rp)
-            matching_credentials = [(AttestedCredentialData(v['webauthn']), k) for k,v in credentials.items()
-                      if AttestedCredentialData(v['webauthn']).credential_id == req['credentialId']]
+            fido2server = _get_fido2server(credentials, fido2rp)
+            matching_credentials = [(v['webauthn'], k) for k,v in credentials.items()
+                      if v['webauthn'].credential_id == req['credentialId']]
 
             if not matching_credentials:
                 current_app.logger.error('Could not find webauthn credential {} on user {}'.format(
@@ -232,13 +231,11 @@ class Plugin(ActionPlugin):
 def _get_user_credentials(user):
     res = {}
     for this in user.credentials.filter(U2F).to_list():
-        keyhandle = websafe_decode(this.keyhandle)
-        public_key = websafe_decode(this.public_key)
-        version = this.version
-        acd = AttestedCredentialData.from_ctap1(keyhandle, public_key)
-        res[this.key] = {'u2f': {'version': version,
-                                 'keyHandle': keyhandle,
-                                 'publicKey': public_key,
+        acd = AttestedCredentialData.from_ctap1(websafe_decode(this.keyhandle),
+                                                websafe_decode(this.public_key))
+        res[this.key] = {'u2f': {'version': this.version,
+                                 'keyHandle': this.keyhandle,
+                                 'publicKey': this.public_key,
                                  },
                          'webauthn': acd,
                          'app_id': this.app_id,
@@ -256,3 +253,16 @@ def _get_user_credentials(user):
                          'app_id': '',
                          }
     return res
+
+def _get_fido2server(credentials, fido2rp):
+    # See if any of the credentials is a legacy U2F credential with an app-id
+    # (assume all app-ids are the same - authenticating with a mix of different
+    # app-ids isn't supported in current Webauthn)
+    app_id = None
+    for k, v in credentials.items():
+        if v['app_id']:
+            app_id = v['app_id']
+            break
+    if app_id:
+        return U2FFido2Server(app_id, fido2rp)
+    return Fido2Server(fido2rp)
