@@ -30,13 +30,15 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 #
+
+import struct
 import json
 import pprint
 import base64
 from flask import current_app, request, session
 
 from eduid_action.common.action_abc import ActionPlugin
-from eduid_userdb.credentials import U2F
+from eduid_userdb.credentials import U2F, Webauthn
 
 from u2flib_server.u2f import begin_authentication, complete_authentication
 
@@ -82,35 +84,36 @@ class Plugin(ActionPlugin):
 
         credentials = _get_user_credentials(user)
         u2f_tokens = [v['u2f'] for v in credentials.values()]
-        webauthn_credentials = [v['webauthn'] for v in credentials.values()]
 
         # CTAP1/U2F
         current_app.logger.debug('U2F tokens for user {}:\n{}'.format(user, pprint.pformat(u2f_tokens)))
-        challenge = begin_authentication(current_app.config['U2F_APP_ID'], u2f_tokens)
-        current_app.logger.debug('U2F challenge:\n{}'.format(pprint.pformat(challenge)))
+        challenge = None
+        try:
+            challenge = begin_authentication(current_app.config['U2F_APP_ID'], u2f_tokens)
+            current_app.logger.debug('U2F challenge:\n{}'.format(pprint.pformat(challenge)))
+        except ValueError:
+            # there is no U2F key registered for this user
+            pass
 
         # CTAP2/Webauthn
+        webauthn_credentials = [v['webauthn'] for v in credentials.values()]
         current_app.logger.debug('Webauthn credentials for user {}:\n{}'.format(
             user, pprint.pformat(webauthn_credentials)))
         fido2rp = RelyingParty(current_app.config['FIDO2_RP_ID'], 'eduID')
         fido2server = _get_fido2server(credentials, fido2rp)
         fido2data, fido2state = fido2server.authenticate_begin(webauthn_credentials)
         current_app.logger.debug('FIDO2 authentication data:\n{}'.format(pprint.pformat(fido2data)))
-        # Base64 encode binary data so the fido2data can be JSON encoded
-        fido2data['publicKey']['challenge'] = base64.b64encode(fido2data['publicKey']['challenge']).decode('utf-8')
-        for v in fido2data['publicKey']['allowCredentials']:
-            v['id'] = base64.b64encode(v['id']).decode('utf-8')
-        current_app.logger.debug('Webauthn data after b64-encoding:\n{}'.format(pprint.pformat(fido2data)))
+
+        config = {'u2fdata': '', 'webauthn_options': fido2data,}
 
         # Save the challenge to be used when validating the signature in perform_action() below
-        session[self.PACKAGE_NAME + '.u2f.challenge'] = challenge.json
+        if challenge is not None:
+            session[self.PACKAGE_NAME + '.u2f.challenge'] = challenge.json
+            config['u2fdata'] = json.dumps(challenge.data_for_client)
+            current_app.logger.debug('U2F challenge for user {}: {}'.format(user, challenge.data_for_client))
+
         session[self.PACKAGE_NAME + '.webauthn.state'] = json.dumps(fido2state)
 
-        current_app.logger.debug('U2F challenge for user {}: {}'.format(user, challenge.data_for_client))
-
-        config = {'u2fdata': json.dumps(challenge.data_for_client),
-                  'webauthn_options': fido2data,
-                  }
         if current_app.config.get('MFA_TESTING', False) == True:
             current_app.logger.info('MFA test mode is enabled')
             config['testing'] = True
@@ -183,11 +186,17 @@ class Plugin(ActionPlugin):
             rp_id = current_app.config['FIDO2_RP_ID']
             fido2rp = RelyingParty(rp_id, 'eduID')
             fido2server = _get_fido2server(credentials, fido2rp)
-            matching_credentials = [v['webauthn'] for v in credentials.values() \
-                                    if v['webauthn'].credential_id == req['credentialId']]
+            matching_credentials = [(v['webauthn'], k) for k,v in credentials.items()
+                      if v['webauthn'].credential_id == req['credentialId']]
+
+            if not matching_credentials:
+                current_app.logger.error('Could not find webauthn credential {} on user {}'.format(
+                    req['credentialId'], user))
+                raise self.ActionError('mfa.unknown-token')
+
             authn_cred = fido2server.authenticate_complete(
                 fido2state,
-                matching_credentials,
+                [mc[0] for mc in matching_credentials],
                 req['credentialId'],
                 client_data,
                 auth_data,
@@ -195,12 +204,7 @@ class Plugin(ActionPlugin):
             )
             current_app.logger.debug('Authenticated Webauthn credential: {}'.format(authn_cred))
 
-            cred_key = [k for k,v in credentials.items() if v['webauthn'].credential_id == req['credentialId']]
-            if not cred_key:
-                current_app.logger.error('Could not find webauthn credential {} on user {}'.format(
-                    req['credentialId'], user))
-                raise self.ActionError('mfa.unknown-token')
-            cred_key = cred_key[0]
+            cred_key = [mc[1] for mc in matching_credentials][0]
 
             touch = auth_data.flags
             counter = auth_data.counter
@@ -217,7 +221,7 @@ class Plugin(ActionPlugin):
             return action.result
 
         else:
-            current_app.logger.error('Neither U2F nor Webauthn data in request')
+            current_app.logger.error('Neither U2F nor Webauthn data in request to authn {}'.format(user))
             current_app.logger.debug('Request: {}'.format(req_json))
             raise self.ActionError('mfa.no-token-response')
 
@@ -227,21 +231,27 @@ class Plugin(ActionPlugin):
 def _get_user_credentials(user):
     res = {}
     for this in user.credentials.filter(U2F).to_list():
-        data = {'version': this.version,
-                'keyHandle': this.keyhandle,
-                'publicKey': this.public_key,
-                # 'appId': APP_ID,
-                }
-
-        # Transform data to Webauthn
         acd = AttestedCredentialData.from_ctap1(websafe_decode(this.keyhandle),
                                                 websafe_decode(this.public_key))
-        res[this.key] = {'u2f': data,
+        res[this.key] = {'u2f': {'version': this.version,
+                                 'keyHandle': this.keyhandle,
+                                 'publicKey': this.public_key,
+                                 },
                          'webauthn': acd,
-                         'app_id': None,
+                         'app_id': this.app_id,
                          }
-        # For credentials created using CTAP1/U2F, app_id is required to verify the signatures
-        res[this.key]['app_id'] = this.app_id
+    for this in user.credentials.filter(Webauthn).to_list():
+        keyhandle = this.keyhandle
+        cred_data = base64.b64decode(this.credential_data.encode('ascii'))
+        credential_data, rest = AttestedCredentialData.unpack_from(cred_data)
+        version = 'webauthn'
+        res[this.key] = {'u2f': {'version': version,
+                                 'keyHandle': keyhandle,
+                                 'publicKey': str(credential_data.public_key),
+                                 },
+                         'webauthn': credential_data,
+                         'app_id': '',
+                         }
     return res
 
 def _get_fido2server(credentials, fido2rp):
