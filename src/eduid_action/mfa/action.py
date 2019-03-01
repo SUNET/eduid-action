@@ -42,6 +42,7 @@ from eduid_userdb.credentials import U2F, Webauthn
 
 from u2flib_server.u2f import begin_authentication, complete_authentication
 
+from fido2 import cbor
 from fido2.server import RelyingParty, Fido2Server, U2FFido2Server
 from fido2.client import ClientData
 from fido2.ctap2 import AttestedCredentialData, AuthenticatorData
@@ -101,8 +102,9 @@ class Plugin(ActionPlugin):
             user, pprint.pformat(webauthn_credentials)))
         fido2rp = RelyingParty(current_app.config['FIDO2_RP_ID'], 'eduID')
         fido2server = _get_fido2server(credentials, fido2rp)
-        fido2data, fido2state = fido2server.authenticate_begin(webauthn_credentials)
-        current_app.logger.debug('FIDO2 authentication data:\n{}'.format(pprint.pformat(fido2data)))
+        raw_fido2data, fido2state = fido2server.authenticate_begin(webauthn_credentials)
+        current_app.logger.debug('FIDO2 authentication data:\n{}'.format(pprint.pformat(raw_fido2data)))
+        fido2data = base64.b64encode(cbor.dumps(raw_fido2data)).decode('ascii')
 
         config = {'u2fdata': '', 'webauthn_options': fido2data,}
 
