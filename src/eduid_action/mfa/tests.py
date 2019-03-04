@@ -86,6 +86,8 @@ class MFAActionPluginTests(ActionsTestCase):
             'https://dashboard.dev.eduid.se',
             'https://idp.dev.eduid.se']
         config['FIDO2_RP_ID'] = 'idp.example.com'
+        config['EIDAS_URL'] = 'https://eidas.dev.eduid.se/mfa-authentication'
+        config['MFA_AUTHN_IDP'] = 'https://eidas-idp.example.com'
         return config
 
     def test_get_mfa_action(self):
