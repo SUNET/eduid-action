@@ -165,8 +165,8 @@ class MFAActionPluginTests(ActionsTestCase):
                     response = client.get('/get-actions')
                     self.assertEqual(response.status_code, 200)
                     response = client.get('/config')
-                    data = cbor.loads(response.data)[0]
-                    u2f_data = json.loads(data['u2fdata'])
+                    data = json.loads(response.data.decode('ascii'))
+                    u2f_data = json.loads(data['payload']['u2fdata'])
                     self.assertEquals(u2f_data["registeredKeys"][0]["keyHandle"], "test_key_handle")
                     self.assertEquals(u2f_data["registeredKeys"][0]["version"], "U2F_V2")
                     self.assertEquals(u2f_data["appId"], "https://example.com")

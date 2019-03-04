@@ -121,8 +121,8 @@ class ToUActionPluginTests(ActionsTestCase):
                     response = client.get('/get-actions')
                     self.assertEqual(response.status_code, 200)
                     response = client.get('/config')
-                    data = cbor.loads(response.data)[0]
-                    self.assertEquals(data['tous']['sv'], 'test tou svenska')
+                    data = json.loads(response.data.decode('ascii'))
+                    self.assertEquals(data['payload']['tous']['sv'], 'test tou svenska')
 
     def test_get_config_no_tous(self):
         with self.session_cookie(self.browser) as client:
@@ -134,8 +134,8 @@ class ToUActionPluginTests(ActionsTestCase):
                     response = client.get('/get-actions')
                     self.assertEqual(response.status_code, 200)
                     response = client.get('/config')
-                    data = cbor.loads(response.data)[0]
-                    self.assertEquals(data['message'], 'tou.no-tou')
+                    data = json.loads(response.data.decode('ascii'))
+                    self.assertEquals(data['payload']['message'], 'tou.no-tou')
 
     @unittest.skip("Fix when celery workers have proper de init or we have a singleton worker")
     def test_get_accept_tou(self):
