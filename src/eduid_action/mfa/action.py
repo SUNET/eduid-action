@@ -60,10 +60,15 @@ class Plugin(ActionPlugin):
 
     @classmethod
     def includeme(cls, app):
+        mandatory_config_keys = [
+            'U2F_APP_ID',
+            'U2F_VALID_FACETS',
+            'FIDO2_RP_ID',
+            'EIDAS_URL',
+            'MFA_AUTHN_IDP'
+        ]
 
-        for item in ('U2F_APP_ID',
-                     'U2F_VALID_FACETS',
-                     'FIDO2_RP_ID'):
+        for item in mandatory_config_keys:
             if app.config.get(item) is None:
                 app.logger.error('The "{}" configuration option is required'.format(item))
 
@@ -104,7 +109,7 @@ class Plugin(ActionPlugin):
         fido2data, fido2state = fido2server.authenticate_begin(webauthn_credentials)
         current_app.logger.debug('FIDO2 authentication data:\n{}'.format(pprint.pformat(fido2data)))
 
-        config = {'u2fdata': '', 'webauthn_options': fido2data,}
+        config = {'u2fdata': '', 'webauthn_options': fido2data}
 
         # Save the challenge to be used when validating the signature in perform_action() below
         if challenge is not None:
@@ -114,31 +119,56 @@ class Plugin(ActionPlugin):
 
         session[self.PACKAGE_NAME + '.webauthn.state'] = json.dumps(fido2state)
 
-        if current_app.config.get('MFA_TESTING', False) == True:
+        if current_app.config.get('MFA_TESTING', False):
             current_app.logger.info('MFA test mode is enabled')
             config['testing'] = True
         else:
             config['testing'] = False
+
+        # Add config for external mfa auth
+        config['eidas_url'] = current_app.config['EIDAS_URL']
+        config['mfa_authn_idp'] = current_app.config['MFA_AUTHN_IDP']
+
         return config
 
     def perform_step(self, action):
+        current_app.logger.debug('Performing MFA step')
         if current_app.config['MFA_TESTING']:
             current_app.logger.debug('Test mode is on, faking authentication')
-            return {'success': True,
-                   'testing': True,
-                   }
-        req_json = request.get_json()
+            return {
+                'success': True,
+                'testing': True,
+            }
 
         if action.old_format:
             userid = action.user_id
-            user = current_app.central_userdb.get_user_by_id(
-                userid, raise_on_missing=False)
+            user = current_app.central_userdb.get_user_by_id(userid, raise_on_missing=False)
         else:
             eppn = action.eppn
-            user = current_app.central_userdb.get_user_by_eppn(
-                eppn, raise_on_missing=False)
+            user = current_app.central_userdb.get_user_by_eppn(eppn, raise_on_missing=False)
         current_app.logger.debug('Loaded User {} from db (in perform_action)'.format(user))
 
+        # MFA fallback
+        if session.pop('mfa_authentication_success', False):
+            issuer = session.pop('mfa_authentication_issuer')
+            authn_instant = session.pop('mfa_authentication_authn_instant')
+            authn_context = session.pop('mfa_authentication_authn_context')
+            current_app.logger.info('User {} logged in using external mfa service {}'.format(user, issuer))
+            action.result = {
+                'success': True,
+                'issuer': issuer,
+                'authn_instant': authn_instant,
+                'authn_context': authn_context
+            }
+            current_app.actions_db.update_action(action)
+            return action.result
+
+        req_json = request.get_json()
+        if not req_json:
+            current_app.logger.error('No data in request to authn {}'.format(user))
+            raise self.ActionError('mfa.no-request-data')
+
+        # Process POSTed data
         if 'tokenResponse' in req_json:
             # CTAP1/U2F
             token_response = request.get_json().get('tokenResponse', '')
@@ -147,8 +177,8 @@ class Plugin(ActionPlugin):
             challenge = session.get(self.PACKAGE_NAME + '.u2f.challenge')
             current_app.logger.debug('Challenge: {!r}'.format(challenge))
 
-            device, counter, touch = complete_authentication(challenge,
-                    token_response, current_app.config['U2F_VALID_FACETS'])
+            device, counter, touch = complete_authentication(challenge, token_response,
+                                                             current_app.config['U2F_VALID_FACETS'])
             current_app.logger.debug('U2F authentication data: {}'.format({
                 'keyHandle': device['keyHandle'],
                 'touch': touch,
