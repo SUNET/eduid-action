@@ -36,7 +36,6 @@ import json
 import base64
 from bson import ObjectId
 from mock import patch
-from fido2 import cbor
 from eduid_userdb.credentials import U2F
 from eduid_userdb.testing import MOCKED_USER_STANDARD
 from eduid_action.common.testing import MockIdPApp

@@ -40,7 +40,6 @@ import unittest
 from mock import patch
 from datetime import datetime
 from bson import ObjectId
-from fido2 import cbor
 from eduid_userdb.tou import ToUEvent
 from eduid_action.common.testing import MockIdPApp
 from eduid_action.common.testing import ActionsTestCase
