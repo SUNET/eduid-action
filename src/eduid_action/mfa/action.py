@@ -119,7 +119,8 @@ class Plugin(ActionPlugin):
 
         session[self.PACKAGE_NAME + '.webauthn.state'] = json.dumps(fido2state)
 
-        if current_app.config.get('MFA_TESTING', False):
+        # Explicit check for boolean True
+        if current_app.config.get('MFA_TESTING') is True:
             current_app.logger.info('MFA test mode is enabled')
             config['testing'] = True
         else:
@@ -149,19 +150,22 @@ class Plugin(ActionPlugin):
         current_app.logger.debug('Loaded User {} from db (in perform_action)'.format(user))
 
         # MFA fallback
-        if session.pop('mfa_authentication_success', False):
-            issuer = session.pop('mfa_authentication_issuer')
-            authn_instant = session.pop('mfa_authentication_authn_instant')
-            authn_context = session.pop('mfa_authentication_authn_context')
-            current_app.logger.info('User {} logged in using external mfa service {}'.format(user, issuer))
-            action.result = {
-                'success': True,
-                'issuer': issuer,
-                'authn_instant': authn_instant,
-                'authn_context': authn_context
-            }
-            current_app.actions_db.update_action(action)
-            return action.result
+        if 'action' in session:
+            external_mfa_data = session['action'].pop('mfa', None)
+            # Explicit check that success is the boolean True
+            if external_mfa_data and external_mfa_data.get('success') is True:
+                issuer = external_mfa_data['issuer']
+                authn_instant = external_mfa_data['authn_instant']
+                authn_context = external_mfa_data['authn_context']
+                current_app.logger.info('User {} logged in using external mfa service {}'.format(user, issuer))
+                action.result = {
+                    'success': True,
+                    'issuer': issuer,
+                    'authn_instant': authn_instant,
+                    'authn_context': authn_context
+                }
+                current_app.actions_db.update_action(action)
+                return action.result
 
         req_json = request.get_json()
         if not req_json:
