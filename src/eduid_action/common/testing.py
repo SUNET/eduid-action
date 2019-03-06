@@ -153,12 +153,6 @@ class ActionsTestCase(EduidAPITestCase):
         config.update(more_config)
         return config
 
-    def tearDown(self):
-        super(ActionsTestCase, self).tearDown()
-        with self.app.app_context():
-            self.app.central_userdb._drop_whole_collection()
-            self.app.actions_db._drop_whole_collection()
-
     @contextmanager
     def session_cookie(self, client, server_name='localhost'):
         with client.session_transaction() as sess:
