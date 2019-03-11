@@ -159,6 +159,7 @@ class MFAActionPluginTests(ActionsTestCase):
         with self.session_cookie(self.browser) as client:
             with client.session_transaction() as sess:
                 with self.app.test_request_context():
+                    self.app.config['GENERATE_U2F_CHALLENGES'] = True
                     mock_idp_app = MockIdPApp(self.app.actions_db)
                     add_actions(mock_idp_app, self.user,
                             MockTicket('mock-session'))

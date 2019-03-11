@@ -93,14 +93,15 @@ class Plugin(ActionPlugin):
 
         # CTAP1/U2F
         # TODO: Only make U2F challenges for U2F tokens?
-        u2f_tokens = [v['u2f'] for v in credentials.values()]
         challenge = None
-        try:
-            challenge = begin_authentication(current_app.config['U2F_APP_ID'], u2f_tokens)
-            current_app.logger.debug('U2F challenge:\n{}'.format(pprint.pformat(challenge)))
-        except ValueError:
-            # there is no U2F key registered for this user
-            pass
+        if current_app.config.get('GENERATE_U2F_CHALLENGES') is True:
+            u2f_tokens = [v['u2f'] for v in credentials.values()]
+            try:
+                challenge = begin_authentication(current_app.config['U2F_APP_ID'], u2f_tokens)
+                current_app.logger.debug('U2F challenge:\n{}'.format(pprint.pformat(challenge)))
+            except ValueError:
+                # there is no U2F key registered for this user
+                pass
 
         # CTAP2/Webauthn
         # TODO: Only make Webauthn challenges for Webauthn tokens?
@@ -111,7 +112,7 @@ class Plugin(ActionPlugin):
         current_app.logger.debug('FIDO2 authentication data:\n{}'.format(pprint.pformat(raw_fido2data)))
         fido2data = base64.b64encode(cbor.dumps(raw_fido2data)).decode('ascii')
 
-        config = {'u2fdata': '', 'webauthn_options': fido2data}
+        config = {'u2fdata': '{}', 'webauthn_options': fido2data}
 
         # Save the challenge to be used when validating the signature in perform_action() below
         if challenge is not None:
