@@ -284,7 +284,7 @@ def _get_user_credentials(user):
         version = 'webauthn'
         res[this.key] = {'u2f': {'version': version,
                                  'keyHandle': keyhandle,
-                                 'publicKey': str(credential_data.public_key),
+                                 'publicKey': credential_data.public_key,
                                  },
                          'webauthn': credential_data,
                          'app_id': '',
