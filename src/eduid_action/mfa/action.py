@@ -89,10 +89,11 @@ class Plugin(ActionPlugin):
             raise self.ActionError('mfa.user-not-found')
 
         credentials = _get_user_credentials(user)
-        u2f_tokens = [v['u2f'] for v in credentials.values()]
+        current_app.logger.debug('FIDO credentials for user {}:\n{}'.format(user, pprint.pformat(credentials)))
 
         # CTAP1/U2F
-        current_app.logger.debug('U2F tokens for user {}:\n{}'.format(user, pprint.pformat(u2f_tokens)))
+        # TODO: Only make U2F challenges for U2F tokens?
+        u2f_tokens = [v['u2f'] for v in credentials.values()]
         challenge = None
         try:
             challenge = begin_authentication(current_app.config['U2F_APP_ID'], u2f_tokens)
@@ -102,9 +103,8 @@ class Plugin(ActionPlugin):
             pass
 
         # CTAP2/Webauthn
+        # TODO: Only make Webauthn challenges for Webauthn tokens?
         webauthn_credentials = [v['webauthn'] for v in credentials.values()]
-        current_app.logger.debug('Webauthn credentials for user {}:\n{}'.format(
-            user, pprint.pformat(webauthn_credentials)))
         fido2rp = RelyingParty(current_app.config['FIDO2_RP_ID'], 'eduID')
         fido2server = _get_fido2server(credentials, fido2rp)
         raw_fido2data, fido2state = fido2server.authenticate_begin(webauthn_credentials)
@@ -117,8 +117,9 @@ class Plugin(ActionPlugin):
         if challenge is not None:
             session[self.PACKAGE_NAME + '.u2f.challenge'] = challenge.json
             config['u2fdata'] = json.dumps(challenge.data_for_client)
-            current_app.logger.debug('U2F challenge for user {}: {}'.format(user, challenge.data_for_client))
+            current_app.logger.debug(f'FIDO1/U2F challenge for user {user}: {challenge.data_for_client}')
 
+        current_app.logger.debug(f'FIDO2/Webauthn state for user {user}: {fido2state}')
         session[self.PACKAGE_NAME + '.webauthn.state'] = json.dumps(fido2state)
 
         # Explicit check for boolean True
