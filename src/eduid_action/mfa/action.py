@@ -280,7 +280,7 @@ def _get_user_credentials(user):
                          }
     for this in user.credentials.filter(Webauthn).to_list():
         keyhandle = this.keyhandle
-        cred_data = base64.b64decode(this.credential_data.encode('ascii'))
+        cred_data = base64.urlsafe_b64decode(this.credential_data.encode('ascii'))
         credential_data, rest = AttestedCredentialData.unpack_from(cred_data)
         version = 'webauthn'
         res[this.key] = {'u2f': {'version': version,
