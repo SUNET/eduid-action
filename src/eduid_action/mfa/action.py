@@ -111,6 +111,7 @@ class Plugin(ActionPlugin):
         raw_fido2data, fido2state = fido2server.authenticate_begin(webauthn_credentials)
         current_app.logger.debug('FIDO2 authentication data:\n{}'.format(pprint.pformat(raw_fido2data)))
         fido2data = base64.urlsafe_b64encode(cbor.dumps(raw_fido2data)).decode('ascii')
+        fido2data = fido2data.rstrip('=')
 
         config = {'u2fdata': '{}', 'webauthn_options': fido2data}
 
@@ -209,7 +210,8 @@ class Plugin(ActionPlugin):
             req = {}
             for this in ['credentialId', 'clientDataJSON', 'authenticatorData', 'signature']:
                 try:
-                    req[this] = base64.b64decode(req_json[this])
+                    req_json[this] += ('=' * (len(req_json[this]) % 4))
+                    req[this] = base64.urlsafe_b64decode(req_json[this])
                 except:
                     current_app.logger.error('Failed to find/b64decode Webauthn parameter {}: {}'.format(
                         this, req_json.get(this)))
