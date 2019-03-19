@@ -225,7 +225,7 @@ class Plugin(ActionPlugin):
             fido2rp = RelyingParty(rp_id, 'eduID')
             fido2server = _get_fido2server(credentials, fido2rp)
             matching_credentials = [(v['webauthn'], k) for k,v in credentials.items()
-                      if v['webauthn'].credential_id == req['credentialId']]
+                                    if v['webauthn'].credential_id == req['credentialId']]
 
             if not matching_credentials:
                 current_app.logger.error('Could not find webauthn credential {} on user {}'.format(
