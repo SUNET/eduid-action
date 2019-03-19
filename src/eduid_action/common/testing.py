@@ -121,8 +121,8 @@ TEST_CONFIG = {
 
 class ActionsTestCase(EduidAPITestCase):
 
-    def setUp(self, init_am=True, am_settings=None):
-        super(ActionsTestCase, self).setUp(init_am=init_am, am_settings=am_settings)
+    def setUp(self, init_am=True, users=None, copy_user_to_private=False, am_settings=None):
+        super(ActionsTestCase, self).setUp(init_am=True, users=None, copy_user_to_private=False, am_settings=None)
         user_data = deepcopy(MOCKED_USER_STANDARD)
         user_data['modified_ts'] = datetime.utcnow()
         self.user = User(data=user_data)
@@ -156,15 +156,12 @@ class ActionsTestCase(EduidAPITestCase):
     @contextmanager
     def session_cookie(self, client, server_name='localhost'):
         with client.session_transaction() as sess:
-            sess.persist()
-        client.set_cookie(server_name, key=self.app.config.get('SESSION_COOKIE_NAME'), value=sess._session.token)
+            client.set_cookie(server_name, key=self.app.config.get('SESSION_COOKIE_NAME'), value=sess._session.token)
         yield client
 
-    def prepare_session(self, sess, action_dict=None, rm_action=False, validation_error=False,
-                         action_error=False, total_steps=1, current_step=1,
-                         add_action=True, idp_session='dummy-session',
-                         set_plugin=True, plugin_name='dummy',
-                         plugin_class=TestingActionPlugin):
+    def prepare_session(self, sess, action_dict=None, rm_action=False, validation_error=False, action_error=False,
+                        total_steps=1, current_step=1, add_action=True, idp_session='dummy-session', set_plugin=True,
+                        plugin_name='dummy', plugin_class=TestingActionPlugin):
         if action_dict is None:
             action_dict = deepcopy(DUMMY_ACTION)
         if action_error:
@@ -182,6 +179,7 @@ class ActionsTestCase(EduidAPITestCase):
         sess['idp_session'] = idp_session
         sess['current_step'] = current_step
         sess['total_steps'] = total_steps
+        sess.persist()
         if set_plugin:
             self.app.plugins[plugin_name] = plugin_class
 
@@ -205,4 +203,4 @@ class ActionsTestCase(EduidAPITestCase):
 
     def prepare(self, session, plugin_class, plugin_name, **kwargs):
         self.prepare_session(session, plugin_name=plugin_name,
-                plugin_class=plugin_class, **kwargs)
+                             plugin_class=plugin_class, **kwargs)
