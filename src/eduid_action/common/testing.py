@@ -159,7 +159,7 @@ class ActionsTestCase(EduidAPITestCase):
             client.set_cookie(server_name, key=self.app.config.get('SESSION_COOKIE_NAME'), value=sess._session.token)
         yield client
 
-    def prepare_session(self, sess, action_dict=None, rm_action=False, validation_error=False, action_error=False,
+    def prepare_session(self, client, action_dict=None, rm_action=False, validation_error=False, action_error=False,
                         total_steps=1, current_step=1, add_action=True, idp_session='dummy-session', set_plugin=True,
                         plugin_name='dummy', plugin_class=TestingActionPlugin):
         if action_dict is None:
@@ -173,13 +173,13 @@ class ActionsTestCase(EduidAPITestCase):
         if add_action:
             self.app.actions_db.add_action(data=deepcopy(action_dict))
         action_dict['_id'] = str(action_dict['_id'])
-        sess['eppn'] = str(action_dict['eppn'])
-        sess['current_action'] = action_dict
-        sess['current_plugin'] = plugin_name
-        sess['idp_session'] = idp_session
-        sess['current_step'] = current_step
-        sess['total_steps'] = total_steps
-        sess.persist()
+        with client.session_transaction() as sess:
+            sess['eppn'] = str(action_dict['eppn'])
+            sess['current_action'] = action_dict
+            sess['current_plugin'] = plugin_name
+            sess['idp_session'] = idp_session
+            sess['current_step'] = current_step
+            sess['total_steps'] = total_steps
         if set_plugin:
             self.app.plugins[plugin_name] = plugin_class
 
@@ -201,6 +201,6 @@ class ActionsTestCase(EduidAPITestCase):
         response = client.get(url)
         return response
 
-    def prepare(self, session, plugin_class, plugin_name, **kwargs):
-        self.prepare_session(session, plugin_name=plugin_name,
+    def prepare(self, client, plugin_class, plugin_name, **kwargs):
+        self.prepare_session(client, plugin_name=plugin_name,
                              plugin_class=plugin_class, **kwargs)
