@@ -31,12 +31,12 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-import struct
 import json
 import pprint
 import base64
-from flask import current_app, request, session
+from flask import current_app, request
 
+from eduid_common.session import session
 from eduid_action.common.action_abc import ActionPlugin
 from eduid_userdb.credentials import U2F, Webauthn
 
@@ -154,23 +154,20 @@ class Plugin(ActionPlugin):
             user = current_app.central_userdb.get_user_by_eppn(eppn, raise_on_missing=False)
         current_app.logger.debug('Loaded User {} from db (in perform_action)'.format(user))
 
-        # MFA fallback
-        if 'action' in session:
-            external_mfa_data = session['action'].pop('mfa', None)
-            # Explicit check that success is the boolean True
-            if external_mfa_data and external_mfa_data.get('success') is True:
-                issuer = external_mfa_data['issuer']
-                authn_instant = external_mfa_data['authn_instant']
-                authn_context = external_mfa_data['authn_context']
-                current_app.logger.info('User {} logged in using external mfa service {}'.format(user, issuer))
-                action.result = {
-                    'success': True,
-                    'issuer': issuer,
-                    'authn_instant': authn_instant,
-                    'authn_context': authn_context
-                }
-                current_app.actions_db.update_action(action)
-                return action.result
+        # Third party service MFA
+        if session.mfa_action.success is True:  # Explicit check that success is the boolean True
+            issuer = session.mfa_action.issuer
+            authn_instant = session.mfa_action.authn_instant
+            authn_context = session.mfa_action.authn_context
+            current_app.logger.info('User {} logged in using external mfa service {}'.format(user, issuer))
+            action.result = {
+                'success': True,
+                'issuer': issuer,
+                'authn_instant': authn_instant,
+                'authn_context': authn_context
+            }
+            current_app.actions_db.update_action(action)
+            return action.result
 
         req_json = request.get_json()
         if not req_json:
