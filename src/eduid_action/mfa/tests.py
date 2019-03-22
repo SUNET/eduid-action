@@ -178,65 +178,65 @@ class MFAActionPluginTests(ActionsTestCase):
 
     def test_action_no_token_response(self):
         with self.session_cookie(self.browser) as client:
-            with client.session_transaction() as sess:
-                self.prepare(sess, Plugin, 'mfa', action_dict=MFA_ACTION)
-                with self.app.test_request_context():
+            self.prepare(client, Plugin, 'mfa', action_dict=MFA_ACTION)
+            with self.app.test_request_context():
+                with client.session_transaction() as sess:
                     csrf_token = sess.get_csrf_token()
                     data = json.dumps({'csrf_token': csrf_token})
                     response = client.post('/post-action', data=data, content_type=self.content_type_json)
-                    self.assertEquals(response.status_code, 200)
-                    data = json.loads(response.data)
-                    self.assertEquals(data['payload']['message'], "mfa.no-token-response")
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn, 'mock-session')), 1)
+                self.assertEquals(response.status_code, 200)
+                data = json.loads(response.data)
+                self.assertEquals(data['payload']['message'], "mfa.no-token-response")
+                self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn, 'mock-session')), 1)
 
     @patch('eduid_action.mfa.action.complete_authentication')
     def test_action_wrong_keyhandle(self, mock_complete_authn):
         mock_complete_authn.return_value = ({'keyHandle': 'wrong-handle'}, 'dummy-touch', 'dummy-counter')
         with self.session_cookie(self.browser) as client:
-            with client.session_transaction() as sess:
-                self.prepare(sess, Plugin, 'mfa', action_dict=MFA_ACTION)
-                with self.app.test_request_context():
+            self.prepare(client, Plugin, 'mfa', action_dict=MFA_ACTION)
+            with self.app.test_request_context():
+                with client.session_transaction() as sess:
                     csrf_token = sess.get_csrf_token()
-                    data = json.dumps({'csrf_token': csrf_token,
-                                       'tokenResponse': 'dummy-response'})
-                    response = client.post('/post-action', data=data, content_type=self.content_type_json)
-                    self.assertEquals(response.status_code, 200)
-                    data = json.loads(response.data)
-                    self.assertEquals(data['payload']['message'], "mfa.unknown-token")
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn, 'mock-session')), 1)
+                data = json.dumps({'csrf_token': csrf_token,
+                                   'tokenResponse': 'dummy-response'})
+                response = client.post('/post-action', data=data, content_type=self.content_type_json)
+                self.assertEquals(response.status_code, 200)
+                data = json.loads(response.data)
+                self.assertEquals(data['payload']['message'], "mfa.unknown-token")
+                self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn, 'mock-session')), 1)
 
     @patch('eduid_action.mfa.action.complete_authentication')
     def test_action_success(self, mock_complete_authn):
         mock_complete_authn.return_value = ({'keyHandle': 'test_key_handle'}, 'dummy-touch', 'dummy-counter')
         with self.session_cookie(self.browser) as client:
-            with client.session_transaction() as sess:
-                self.prepare(sess, Plugin, 'mfa', action_dict=MFA_ACTION)
-                with self.app.test_request_context():
+            self.prepare(client, Plugin, 'mfa', action_dict=MFA_ACTION)
+            with self.app.test_request_context():
+                with client.session_transaction() as sess:
                     csrf_token = sess.get_csrf_token()
-                    data = json.dumps({'csrf_token': csrf_token,
-                                       'tokenResponse': 'dummy-response'})
-                    response = client.post('/post-action', data=data, content_type=self.content_type_json)
-                    self.assertEquals(response.status_code, 200)
-                    data = json.loads(response.data)
-                    self.assertEquals(data['payload']['message'], "actions.action-completed")
+                data = json.dumps({'csrf_token': csrf_token,
+                                   'tokenResponse': 'dummy-response'})
+                response = client.post('/post-action', data=data, content_type=self.content_type_json)
+                self.assertEquals(response.status_code, 200)
+                data = json.loads(response.data)
+                self.assertEquals(data['payload']['message'], "actions.action-completed")
 
     @patch('eduid_action.mfa.action.complete_authentication')
     def test_action_back_to_idp(self, mock_complete_authn):
         mock_complete_authn.return_value = ({'keyHandle': 'test_key_handle'}, 'dummy-touch', 'dummy-counter')
         with self.session_cookie(self.browser) as client:
-            with client.session_transaction() as sess:
-                self.prepare(sess, Plugin, 'mfa', action_dict=MFA_ACTION)
-                with self.app.test_request_context():
+            self.prepare(client, Plugin, 'mfa', action_dict=MFA_ACTION)
+            with self.app.test_request_context():
+                with client.session_transaction() as sess:
                     csrf_token = sess.get_csrf_token()
-                    data = json.dumps({'csrf_token': csrf_token,
-                                       'tokenResponse': 'dummy-response'})
-                    response = client.post('/post-action', data=data, content_type=self.content_type_json)
-                    self.assertEquals(response.status_code, 200)
-                    data = json.loads(response.data)
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn, 'mock-session')), 1)
-                    mock_idp_app = MockIdPApp(self.app.actions_db)
-                    add_actions(mock_idp_app, self.user, MockTicket('mock-session'))
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn, 'mock-session')), 0)
+                data = json.dumps({'csrf_token': csrf_token,
+                               'tokenResponse': 'dummy-response'})
+                response = client.post('/post-action', data=data, content_type=self.content_type_json)
+                self.assertEquals(response.status_code, 200)
+                data = json.loads(response.data)
+                self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn, 'mock-session')), 1)
+                mock_idp_app = MockIdPApp(self.app.actions_db)
+                add_actions(mock_idp_app, self.user, MockTicket('mock-session'))
+                self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn, 'mock-session')), 0)
 
     @patch('eduid_action.mfa.action.complete_authentication')
     def test_action_webauthn_legacy_token(self, mock_complete_authn):
@@ -255,32 +255,57 @@ class MFAActionPluginTests(ActionsTestCase):
         self.app.central_userdb.save(self.user, check_sync=False)
 
         with self.session_cookie(self.browser) as client:
-            with client.session_transaction() as sess:
-                self.prepare(sess, Plugin, 'mfa', action_dict=MFA_ACTION)
-                with self.app.test_request_context():
-                    csrf_token = sess.get_csrf_token()
-                    data = json.dumps({'csrf_token': csrf_token,
-                                       'authenticatorData': 'mZ9k6EPHoJxJZNA+UuvM0JVoutZHmqelg9kXe/DSefgBAAAA/w==',
-                                       'clientDataJSON': 'eyJjaGFsbGVuZ2UiOiIzaF9FQVpwWTI1eERkU0pDT014MUFCWkVBNU9k'+\
-                                       'ejN5ZWpVSTNBVU5UUVdjIiwib3JpZ2luIjoiaHR0cHM6Ly9pZHAuZGV2LmVkdWlkLnNlIiwidH'+\
-                                       'lwZSI6IndlYmF1dGhuLmdldCJ9',
-                                       'credentialId': 'V1vXqZcwBJD2RMIH2udd2F7R9NoSNlP7ZSPOtKHzS7n/rHFXcXbSpOoX//'+\
-                                                       'aUKyTR6jEC8Xv678WjXC5KEkvziA==',
-                                       'signature': 'MEYCIQC5gM8inamJGUFKu3bNo4fT0jmJQuw33OSSXc242NCuiwIhAIWnVw2Sp'+\
-                                                    'ow72j6J92KaY2rLR6qSXEbLam09ZXbSkBnQ'}
-                                      )
+            self.prepare(client, Plugin, 'mfa', action_dict=MFA_ACTION)
+            with self.app.test_request_context():
+                with client.session_transaction() as sess:
                     fido2_state = Fido2Server._make_internal_state(
                         base64.b64decode('3h/EAZpY25xDdSJCOMx1ABZEA5Odz3yejUI3AUNTQWc='), 'preferred')
                     sess['eduid_action.mfa.webauthn.state'] = json.dumps(fido2_state)
-                    sess.persist()
+                    csrf_token = sess.get_csrf_token()
 
-                    self.app.config['FIDO2_RP_ID'] = 'idp.dev.eduid.se'
-                    response = client.post('/post-action', data=data, content_type=self.content_type_json)
-                    self.assertEquals(response.status_code, 200)
-                    data = json.loads(response.data)
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn, 'mock-session')), 1)
-                    mock_idp_app = MockIdPApp(self.app.actions_db)
-                    mock_idp_app.logger = self.app.logger
-                    add_actions(mock_idp_app, self.user,
-                            MockTicket('mock-session'))
-                    self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn, 'mock-session')), 0)
+                data = json.dumps({'csrf_token': csrf_token,
+                                   'authenticatorData': 'mZ9k6EPHoJxJZNA+UuvM0JVoutZHmqelg9kXe/DSefgBAAAA/w==',
+                                   'clientDataJSON': 'eyJjaGFsbGVuZ2UiOiIzaF9FQVpwWTI1eERkU0pDT014MUFCWkVBNU9k'+\
+                                   'ejN5ZWpVSTNBVU5UUVdjIiwib3JpZ2luIjoiaHR0cHM6Ly9pZHAuZGV2LmVkdWlkLnNlIiwidH'+\
+                                   'lwZSI6IndlYmF1dGhuLmdldCJ9',
+                                   'credentialId': 'V1vXqZcwBJD2RMIH2udd2F7R9NoSNlP7ZSPOtKHzS7n/rHFXcXbSpOoX//'+\
+                                                   'aUKyTR6jEC8Xv678WjXC5KEkvziA==',
+                                   'signature': 'MEYCIQC5gM8inamJGUFKu3bNo4fT0jmJQuw33OSSXc242NCuiwIhAIWnVw2Sp'+\
+                                                'ow72j6J92KaY2rLR6qSXEbLam09ZXbSkBnQ'}
+                                  )
+
+                self.app.config['FIDO2_RP_ID'] = 'idp.dev.eduid.se'
+                response = client.post('/post-action', data=data, content_type=self.content_type_json)
+                self.assertEquals(response.status_code, 200)
+                data = json.loads(response.data)
+                self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn, 'mock-session')), 1)
+                mock_idp_app = MockIdPApp(self.app.actions_db)
+                mock_idp_app.logger = self.app.logger
+                add_actions(mock_idp_app, self.user, MockTicket('mock-session'))
+                self.assertEquals(len(self.app.actions_db.get_actions(self.user.eppn, 'mock-session')), 0)
+
+    def test_third_party_mfa_action_success(self):
+        with self.session_cookie(self.browser) as client:
+            self.prepare(client, Plugin, 'mfa', action_dict=MFA_ACTION)
+            with client.session_transaction() as sess:
+                sess.mfa_action.success = True
+                sess.mfa_action.issuer = 'https://issuer-entity-id.example.com'
+                sess.mfa_action.authn_instant = '2019-03-21T16:26:17Z'
+                sess.mfa_action.authn_context = 'http://id.elegnamnden.se/loa/1.0/loa3'
+
+            response = client.get('/redirect-action')
+            self.assertEquals(response.status_code, 302)
+            db_actions = self.app.actions_db.get_actions(self.user.eppn, 'mock-session')
+            self.assertTrue(db_actions[0].result['success'])
+            self.assertEqual(db_actions[0].result['issuer'], 'https://issuer-entity-id.example.com')
+            self.assertEqual(db_actions[0].result['authn_instant'], '2019-03-21T16:26:17Z')
+            self.assertEqual(db_actions[0].result['authn_context'], 'http://id.elegnamnden.se/loa/1.0/loa3')
+
+    def test_third_party_mfa_action_failure(self):
+        with self.session_cookie(self.browser) as client:
+            self.prepare(client, Plugin, 'mfa', action_dict=MFA_ACTION)
+
+            response = client.get('/redirect-action')
+            self.assertEquals(response.status_code, 302)
+            db_actions = self.app.actions_db.get_actions(self.user.eppn, 'mock-session')
+            self.assertIsNone(db_actions[0].result)
